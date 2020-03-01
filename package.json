@@ -1,0 +1,26 @@
+{
+  "name": "porm",
+  "version": "1.0.0",
+  "description": "Postgres ORM",
+  "repository": "https://gitlab.com/romikus/porm",
+  "author": "Roman Kushyn",
+  "keywords": [
+    "pg",
+    "postgre",
+    "postgres",
+    "postgresql",
+    "orm",
+    "query",
+    "model",
+    "sql"
+  ],
+  "main": "src/porm",
+  "license": "MIT",
+  "dependencies": {
+    "pg-adapter": "latest",
+    "pluralize": "latest"
+  },
+  "devDependencies": {
+    "jest": "latest"
+  }
+}
