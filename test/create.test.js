@@ -1,4 +1,4 @@
-const {models} = require('../src/pgorm')
+const {models} = require('../src/porm')
 const db = require('./db')
 const {line} = require('./utils')
 

@@ -1,4 +1,4 @@
-const {models, belongsTo} = require('../src/pgorm')
+const {models, belongsTo} = require('../src/porm')
 const db = require('./db')
 const {line} = require('./utils')
 

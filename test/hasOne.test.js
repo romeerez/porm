@@ -1,26 +1,28 @@
-const {models, belongsTo, hasOne} = require('../src/pgorm')
+const {models, belongsTo, hasOne} = require('../src/porm')
 const db = require('./db')
 const {line} = require('./utils')
 
 models(db, {
   users: {
-    avatar: hasOne('images', {as: 'object'}),
-    avatarWithScope: hasOne('images', {
+    avatar: hasOne({model: 'images', as: 'object'}),
+    avatarWithScope: hasOne({
+      model: 'images',
       as: 'object',
       scope: (query) => query.where('active')
     }),
-    profile: hasOne('profile'),
-    profileWithScope: hasOne('profile', {
+    profile: hasOne(),
+    profileWithScope: hasOne({
+      model: 'profiles',
       scope: (profiles) => profiles.active()
     })
   },
-  profile: {
+  profiles: {
     scopes: {
       active: (profiles) => profiles.where({active: true})
     }
   },
   images: {
-    object: belongsTo('object', {polymorphic: true})
+    object: belongsTo({polymorphic: true})
   }
 })
 

@@ -1,4 +1,4 @@
-const {models, belongsTo, hasOne, hasMany, hasAndBelongsToMany} = require('../src/pgorm')
+const {models, belongsTo, hasOne, hasMany, hasAndBelongsToMany} = require('../src/porm')
 const db = require('./db')
 const {line} = require('./utils')
 
@@ -8,11 +8,11 @@ describe('hasThrough', () => {
       beforeAll(() => {
         models(db, {
           profiles: {
-            user: belongsTo('users'),
-            country: (one ? hasOne : hasMany)('country', {through: 'user', scope: (query) => query.active()}),
+            user: belongsTo(),
+            country: (one ? hasOne : hasMany)({through: 'user', scope: (query) => query.active()}),
           },
           users: {
-            country: belongsTo('countries')
+            country: belongsTo()
           },
           countries: {
             scopes: {
@@ -60,11 +60,11 @@ describe('hasThrough', () => {
       beforeAll(() => {
         models(db, {
           profiles: {
-            user: (one ? hasOne : hasMany)('users'),
-            country: (one ? hasOne : hasMany)('country', {through: 'user', scope: (query) => query.active()}),
+            user: (one ? hasOne : hasMany)(),
+            country: (one ? hasOne : hasMany)({through: 'user', scope: (query) => query.active()}),
           },
           users: {
-            country: belongsTo('countries')
+            country: belongsTo()
           },
           countries: {
             scopes: {
@@ -112,11 +112,11 @@ describe('hasThrough', () => {
       beforeAll(() => {
         models(db, {
           teams: {
-            users: hasMany('users'),
-            country: (one ? hasOne : hasMany)('country', {through: 'users', scope: (query) => query.active()}),
+            users: hasMany(),
+            country: (one ? hasOne : hasMany)({through: 'users', scope: (query) => query.active()}),
           },
           users: {
-            country: belongsTo('country')
+            country: belongsTo()
           },
           country: {
             scopes: {
@@ -166,11 +166,11 @@ describe('hasThrough', () => {
       beforeAll(() => {
         models(db, {
           chats: {
-            users: hasAndBelongsToMany('users'),
-            country: (one ? hasOne : hasMany)('country', {through: 'users', scope: (query) => query.active()}),
+            users: hasAndBelongsToMany(),
+            country: (one ? hasOne : hasMany)({through: 'users', scope: (query) => query.active()}),
           },
           users: {
-            country: belongsTo('countries')
+            country: belongsTo()
           },
           countries: {
             scopes: {

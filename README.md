@@ -93,10 +93,10 @@ const db = new Adapter({params})
 
 module.exports = models(db, {
   artists: {
-    songs: hasMany('songs')
+    songs: hasMany()
   },
   songs: {
-    artist: belongsTo('artists')
+    artist: belongsTo()
   },
 })
 ```
@@ -108,14 +108,14 @@ Normally each in separate file:
 const {hasMany} = require('porm')
 
 module.exports = {
-  songs: hasMany('songs')
+  songs: hasMany()
 }
 
 // db/models/songs.js
 const {belongsTo} = require('porm')
 
 module.exports = {
-  artist: belongsTo('artists')
+  artist: belongsTo()
 }
 
 // db/index.js
@@ -170,10 +170,10 @@ models(db, {
   countries: {},
   cities: {
     // options are optional
-    country: belongsTo('countries'),
+    country: belongsTo(),
     
     // with options:
-    country: belongsTo('countries', {
+    country: belongsTo({
       primaryKey: 'id', // id column of other table
       foreignKey: 'country_id', // column in current table
       polymorphic: false,
@@ -193,7 +193,7 @@ const {models, belongsTo} = require('pg-adapter')
 
 models(db, {
   pictures: {
-    imageable: belongsTo('imageable', {polymorphic: true})
+    imageable: belongsTo({polymorphic: true})
   }
 })
 
@@ -215,10 +215,10 @@ models(db, {
   profiles: {},
   users: {
     // options are optional:
-    profile: hasOne('profiles'),
+    profile: hasOne(),
     
     // with options:
-    profile: hasOne('profiles', {
+    profile: hasOne({
       primaryKey: 'id', // id column of this table (of users)
       foreignKey: 'user_id', // column in other table (in profiles)
       scope: (profile) => profile.where('some condition'),
@@ -232,13 +232,11 @@ const profile = await db.users.profile(user)
 
 Relation `through`:
 
-Notice singular form `hasOne('profile')` - it is the name of relation in `users` model.
-
 ```js
 models(db, {
   accounts: {
-    user: hasOne('users'),
-    profile: hasOne('profile', {
+    user: hasOne(),
+    profile: hasOne({
       through: 'user',
     })
   }
@@ -255,13 +253,13 @@ const {models, belongsTo, hasOne} = require('porm')
 
 models(db, {
   pictures: {
-    imageable: belongsTo('imageable', {polymorphic: true})
+    imageable: belongsTo({polymorphic: true})
   },
   employees: {
-    picture: hasOne('pictures', {as: 'imageable'})
+    picture: hasOne({as: 'imageable'})
   },
   products: {
-    picture: hasOne('pictures', {as: 'imageable'})
+    picture: hasOne({as: 'imageable'})
   }
 })
 
@@ -282,10 +280,10 @@ models(db, {
   books: {},
   authors: {
     // options are optional:
-    books: hasMany('books'),
+    books: hasMany(),
     
     // with options:
-    books: hasMany('books', {
+    books: hasMany({
       primaryKey: 'id', // id column of this table (of authors)
       foreignKey: 'author_id', // column in other table (in books)
       scope: (books) => books.where('some condition'),
@@ -299,21 +297,19 @@ const books = await db.authors.books(author)
 
 Relation `through`:
 
-Notice singular form `hasMany('patient')` - it is the name of relation in `appointments` model.
-
 ```js
 models(db, {
   physicians: {
-    appointments: hasMany('appointments'),
-    patients: hasMany('patient', {through: 'appointments'})
+    appointments: hasMany(),
+    patients: hasMany({through: 'appointments'})
   },
   appointments: {
-    physician: belongsTo('physicians'),
-    patient: belongsTo('patients'),
+    physician: belongsTo(),
+    patient: belongsTo(),
   },
   patients: {
-    appointments: hasMany('appointments'),
-    physicians: hasMany('physicians', {through: 'appointments'})
+    appointments: hasMany(),
+    physicians: hasMany({through: 'appointments'})
   },
 })
 
@@ -330,13 +326,13 @@ const {models, belongsTo, hasMany} = require('porm')
 
 models(db, {
   pictures: {
-    imageable: belongsTo('imageable', {polymorphic: true})
+    imageable: belongsTo({polymorphic: true})
   },
   employees: {
-    pictures: hasMany('pictures', {as: 'imageable'})
+    pictures: hasMany({as: 'imageable'})
   },
   products: {
-    pictures: hasMany('pictures', {as: 'imageable'})
+    pictures: hasMany({as: 'imageable'})
   }
 })
 
@@ -357,7 +353,7 @@ const {models, hasAndBelongsToMany} = require('pg-adapter')
 
 models(db, {
   posts: {
-    tags: hasAndBelongsToMany('tags', {
+    tags: hasAndBelongsToMany({
       joinTable: 'posts_tags', // by default is joining table names alphabetically
       foreignKey: 'post_id', // for record of this table
       associationForeignKey: 'tag_id', // for record of other table
@@ -365,7 +361,7 @@ models(db, {
     }),
   },
   tags: {
-    posts: hasAndBelongsToMany('posts')
+    posts: hasAndBelongsToMany()
   }
 })
 
@@ -577,7 +573,7 @@ db.table.join(db.otherTable.as('alias').where({a: 1}))
 // can join related tables
 const {models, belongsTo} = require('porm')
 models(db, {
-  posts: {authors: belongsTo('authors')},
+  posts: {authors: belongsTo()},
   authors: {}
 })
 

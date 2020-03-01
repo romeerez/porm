@@ -1,11 +1,12 @@
-const {models, belongsTo} = require('../src/pgorm')
+const {models, belongsTo} = require('../src/porm')
 const db = require('./db')
 const {line} = require('./utils')
 
 models(db, {
   messages: {
-    chat: belongsTo('chats'),
-    chatWithScope: belongsTo('chats', {
+    chat: belongsTo(),
+    chatWithScope: belongsTo({
+      model: 'chats',
       scope: (chats) => chats.active()
     })
   },
@@ -18,7 +19,7 @@ models(db, {
     table: 'users_table_name'
   },
   images: {
-    object: belongsTo('object', {polymorphic: true})
+    object: belongsTo({polymorphic: true})
   }
 })
 

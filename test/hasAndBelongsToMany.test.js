@@ -1,11 +1,12 @@
-const {models, hasAndBelongsToMany} = require('../src/pgorm')
+const {models, hasAndBelongsToMany} = require('../src/porm')
 const db = require('./db')
 const {line} = require('./utils')
 
 models(db, {
   users: {
-    chats: hasAndBelongsToMany('chats'),
-    chatsWithScope: hasAndBelongsToMany('chats', {
+    chats: hasAndBelongsToMany(),
+    chatsWithScope: hasAndBelongsToMany({
+      model: 'chats',
       scope: (chats) => chats.active()
     })
   },

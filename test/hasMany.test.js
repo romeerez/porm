@@ -1,17 +1,19 @@
-const {models, hasMany, belongsTo} = require('../src/pgorm')
+const {models, hasMany, belongsTo} = require('../src/porm')
 const db = require('./db')
 const {line} = require('./utils')
 
 models(db, {
   chats: {
-    messages: hasMany('messages'),
-    messagesWithScope: hasMany('messages', {
+    messages: hasMany(),
+    messagesWithScope: hasMany({
+      model: 'messages',
       scope: (messages) => messages.active()
     })
   },
   messages: {
-    images: hasMany('images', {as: 'object'}),
-    imagesWithScope: hasMany('images', {
+    images: hasMany({as: 'object'}),
+    imagesWithScope: hasMany({
+      model: 'images',
       as: 'object',
       scope: (query) => query.where('active'),
     }),
@@ -20,7 +22,7 @@ models(db, {
     }
   },
   images: {
-    object: belongsTo('object', {polymorphic: true})
+    object: belongsTo({polymorphic: true})
   }
 })
 

@@ -16,7 +16,7 @@ const models = (db, object) => {
       for (let key in model) {
         const method = model[key]
         if (method && !method.subquery && method.association && (!method.through || loadThrough)) {
-          model[key] = method(db, model)
+          model[key] = method(db, model, key)
         }
       }
     }
