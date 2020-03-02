@@ -101,51 +101,59 @@ module.exports = models(db, {
 })
 ```
 
-Normally each in separate file:
+Instead, I suggest to use component approach recommended in
+[best practices](
+  https://github.com/goldbergyoni/nodebestpractices/blob/master/sections/projectstructre/breakintcomponents.md
+).
 
 ```js
-// db/models/artists.js
-const {hasMany} = require('porm')
+// src/components/artists/model.js
+const {model, hasMany} = require('porm')
 
-module.exports = {
+module.exports = model('artists', {
   songs: hasMany()
-}
+})
 
-// db/models/songs.js
-const {belongsTo} = require('porm')
+// src/components/songs/model.js
+const {model, belongsTo} = require('porm')
 
-module.exports = {
+module.exports = model('songs', {
   artist: belongsTo()
-}
+})
 
-// db/index.js
+// src/db/index.js
 const {models} = require('porm')
 const {Adapter} = require('pg-adapter')
 
 const db = new Adapter({params})
 
 module.exports = models(db, {
-  artists: require('./models/artists'),
-  songs: require('./models/songs'),
+  artists: require('components/artists/model'),
+  songs: require('components/songs/model'),
 })
 
 // usage.js
 const db = require('db')
 
 const artists = await db.artists.all()
+
+// or directly require a model:
+const songs = require('components/songs/model')
+
+const result = songs.all()
 ```
 
-Options:
+Anyway, all models must be passed to `models` function which will create relations between different models.
+
+Model options:
 
 ```js
-models(db, {
-  samples: {
-    table: 'samples', // can be some other name
-    defaultScope: (query) => query.where({hidden: false})
-  }
+model('samples', {
+  table: 'samples', // can be some other name
+  defaultScope: (query) => query.where({hidden: false})
 })
 
-// filtered samples by default
+// filtered samples with defaultScope
 const samples = await db.samples.all()
 
 // use unscoped to get all samples

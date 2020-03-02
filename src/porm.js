@@ -3,11 +3,14 @@ const base = require('./lib/base')
 const associations = require('./lib/associations')
 
 const models = (db, object) => {
-  db.base = base
+  if (!db.base) db.base = base
   if (!db.modelByTable) db.modelByTable = {}
 
-  for (let key in object) {
-    db[key] = model(db, key, object[key])
+  for (let name in object) {
+    const mod = object[name].isModel ? object[name] : model(name, object[name])
+    db.modelByTable[mod.table] = mod
+    db[name] = mod
+    mod.db = db
   }
 
   [false, true].forEach(loadThrough => {
@@ -25,9 +28,9 @@ const models = (db, object) => {
   return db
 }
 
-const model = (db, name, object) => {
+const model = (name, object) => {
   const model = Object.create(base)
-  model.db = db
+  model.isModel = true
 
   if (!object.table)
     model.table = plural(name)
@@ -36,7 +39,7 @@ const model = (db, name, object) => {
     model.primaryKey = 'id'
 
   Object.assign(model, object)
-  db.modelByTable[model.table] = model
+
   model.quotedTable = `"${model.table}"`
 
   if (object.defaultScope)
