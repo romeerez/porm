@@ -11,7 +11,7 @@ const insert = async (model, columns, values, returning, records) => {
   result.forEach((row, rowNum) => {
     const record = records[rowNum]
     row.forEach((value, i) =>
-      record[columns[i]] = value
+      record[returning[i]] = value
     )
   })
   return records
