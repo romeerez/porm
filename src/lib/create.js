@@ -14,7 +14,7 @@ const insert = async (model, columns, values, returning, records) => {
       record[columns[i]] = value
     )
   })
-  console.log(result)
+  return records
 }
 
 const createMany = (model, records, returning) => {
@@ -53,9 +53,9 @@ const create = (model, record, returning) => {
   )
 }
 
-module.exports = function(records, returning = ['id']) {
+module.exports = async function(records, returning = ['id']) {
   if (Array.isArray(records))
-    createMany(this, records, returning)
+    return await createMany(this, records, returning)
   else
-    create(this, records, returning)
+    return (await create(this, records, returning))[0]
 }
