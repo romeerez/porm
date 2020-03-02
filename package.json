@@ -1,6 +1,6 @@
 {
   "name": "porm",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Postgres ORM",
   "repository": "https://gitlab.com/romikus/porm",
   "author": "Roman Kushyn",
