@@ -367,6 +367,24 @@ describe('or', () => {
   })
 })
 
+describe('findBy', () => {
+  it('like where but with take', () => {
+    const q = db.users.all()
+    expect(q.findBy({a: 1}).toSql()).toBe(
+      'SELECT "users".* FROM "users" WHERE "users"."a" = 1 LIMIT 1'
+    )
+    expect(q.toSql()).toBe('SELECT "users".* FROM "users"')
+  })
+
+  it('has modifier', () => {
+    const q = db.users.all()
+    q._findBy({a: 1})
+    expect(q.toSql()).toBe(
+      'SELECT "users".* FROM "users" WHERE "users"."a" = 1 LIMIT 1'
+    )
+  })
+})
+
 describe('group', () => {
   it('adds GROUP BY', () => {
     const q = db.users.all()
@@ -570,5 +588,19 @@ describe('join', () => {
       SELECT "users".* FROM "users"
       JOIN "table" AS "as" ON on 
     `))
+  })
+})
+
+describe('exists', () => {
+  it('selects 1', () => {
+    const q = db.users.all()
+    expect(q.exists().toSql()).toBe('SELECT 1 FROM "users"')
+    expect(q.toSql()).toBe('SELECT "users".* FROM "users"')
+  })
+
+  it('has modifier', () => {
+    const q = db.users.all()
+    q._exists()
+    expect(q.toSql()).toBe('SELECT 1 FROM "users"')
   })
 })

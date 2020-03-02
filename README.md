@@ -506,6 +506,8 @@ query.or({a: 1}, query.where({b: 2}).or({c: 3}))
 // WHERE "table"."a" = 1 OR ( "table"."b" = 2 OR "table"."c" = 3 )
 ```
 
+`findBy` is same as `where(...).take()`
+
 `group` and `groupRaw` for GROUP BY statement:
 
 ```js
@@ -606,3 +608,5 @@ module.exports = {
   },
 }
 ```
+
+`exists` cheap check if record exists, it's doing `SELECT 1 FROM table`

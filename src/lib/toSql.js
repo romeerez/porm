@@ -13,24 +13,28 @@ module.exports = function({model, __query: query}) {
   sql.push('SELECT')
   const table = query.as ? `"${query.as}"` : model.quotedTable
 
-  const distinct = select(model, table, query.distinct, false)
-  const distinctRaw = select(model, table, query.distinctRaw, true)
-  if (query.distinct || query.distinctRaw) {
-    sql.push('DISTINCT')
-    if (distinct || distinctRaw) {
-      let both = distinct
-      if (distinctRaw)
-        both = both ? `${both}, ${distinctRaw}` : distinctRaw
-      sql.push('ON', `(${both})`)
+  if (query.exists) {
+    sql.push('1')
+  } else {
+    const distinct = select(model, table, query.distinct, false)
+    const distinctRaw = select(model, table, query.distinctRaw, true)
+    if (query.distinct || query.distinctRaw) {
+      sql.push('DISTINCT')
+      if (distinct || distinctRaw) {
+        let both = distinct
+        if (distinctRaw)
+          both = both ? `${both}, ${distinctRaw}` : distinctRaw
+        sql.push('ON', `(${both})`)
+      }
     }
-  }
 
-  if (query.select)
-    sql.push(select(model, table, query.select, false))
-  else if (query.selectRaw)
-    sql.push(select(model, table, query.selectRaw, true))
-  else if (!query.select)
-    sql.push(`${table}.*`)
+    if (query.select)
+      sql.push(select(model, table, query.select, false))
+    else if (query.selectRaw)
+      sql.push(select(model, table, query.selectRaw, true))
+    else if (!query.select)
+      sql.push(`${table}.*`)
+  }
 
   sql.push('FROM', query.from || model.quotedTable)
   if (query.as)

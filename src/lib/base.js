@@ -107,6 +107,14 @@ module.exports = {
     return this._where({[this.primaryKey]: id})._take()
   },
 
+  findBy(...args) {
+    return this.clone()._findBy(...args)
+  },
+
+  _findBy(...args) {
+    return this._where(...args)._take()
+  },
+
   wrap(query, as = 't') {
     return this.clone()._wrap(query.clone(), as)
   },
@@ -182,7 +190,17 @@ module.exports = {
 
   then(resolve, reject) {
     const query = this.toQuery()
-    return this.db[query.__query.type || 'objects'](this.toSql()).then(resolve, reject)
+
+    const type = query.__query.type || 'objects'
+
+    if (type === 'objects' && query.__query.take) {
+      const original = resolve
+      resolve = (result) => {
+        original(result[0])
+      }
+    }
+
+    return this.db[type](this.toSql()).then(resolve, reject)
   },
 
   as(as) {
@@ -399,11 +417,11 @@ module.exports = {
     return query
   },
 
-  include() {
-    return this.clone()._include()
+  exists() {
+    return this.clone()._exists()
   },
 
-  _include(...args) {
-    return pushArgs(this, 'include', args)
-  },
+  _exists() {
+    return setValue(this, 'exists', true)
+  }
 }
