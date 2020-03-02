@@ -36,7 +36,10 @@ module.exports = function({model, __query: query}) {
       sql.push(`${table}.*`)
   }
 
-  sql.push('FROM', query.from || model.quotedTable)
+  const from = query.from || model.quotedTable
+  if (!from) return sql.join(' ')
+
+  sql.push('FROM', from)
   if (query.as)
     sql.push(`"${query.as}"`)
 
