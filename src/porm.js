@@ -3,7 +3,10 @@ const base = require('./lib/base')
 const associations = require('./lib/associations')
 
 const models = (db, object) => {
-  if (!db.base) db.base = base
+  if (!db.base) {
+    db.base = Object.create(base)
+    db.base.db = db
+  }
   if (!db.modelByTable) db.modelByTable = {}
 
   for (let name in object) {
