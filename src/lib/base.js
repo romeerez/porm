@@ -422,6 +422,6 @@ module.exports = {
   },
 
   _exists() {
-    return setValue(this, 'exists', true)
+    return setValue(this._value(), 'exists', true)
   }
 }
