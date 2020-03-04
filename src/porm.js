@@ -28,6 +28,23 @@ const models = (db, object) => {
     }
   })
 
+  for (let modelName in object) {
+    const model = db[modelName]
+    if (model.prepared) {
+      const prepared = model.prepared(db)
+      for (let name in prepared) {
+        const query = prepared[name]
+        model[name] = (query.query || query).prepare(name, ...(query.args || []))
+      }
+    }
+    if (model.queries) {
+      const queries = model.queries(db)
+      for (let name in queries) {
+        model[name] = queries[name]
+      }
+    }
+  }
+
   return db
 }
 

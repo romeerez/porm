@@ -35,8 +35,9 @@ const db = new Adapter({params})
     * [hasMany](#hasmany)
     * [hasAndBelongsToMany](#hasandbelongstomany)
   - [Scopes](#scopes)
-  - [Query Interface](#query-interface)
-  - [Prepared Statements](#prepared-statements)
+  - [Queries](#queries)
+* [Query Interface](#query-interface)
+* [Prepared Statements](#prepared-statements)
 
 ## Loading data from related tables
 
@@ -399,6 +400,25 @@ models(db, {
 })
 ```
 
+## Queries
+
+There is `queries` special property in model definition:
+
+```js
+model('users', {
+  queries: (db) => ({
+    findByName: (name) =>
+      db.users.where({name}).take()
+  })
+})
+```
+
+It's similar to [scopes](#scopes)
+except `db` instance present and you can build queries using other models.
+
+It's similar to [prepared](#prepared-statements),
+difference is prepared statements requires argument definition. 
+
 ## Query interface
 
 `unscoped()` clears all query info
@@ -623,4 +643,23 @@ const prepared = db.samples.where('id = $1 AND name = $2')
                    .prepare('filterByIdAndName', 'integer', 'text')
 
 const result = await prepared(5, 'some string')
+```
+
+There is special `prepared` property in model definition:
+
+```js
+model('users', {
+  prepared: (db) => ({
+    findById: { // with arguments
+      args: ['integer'],
+      query: db.users.where('id = $1')
+    },
+    // without arguments
+    ordered: db.users.order({created_at: 'desc'})
+  })
+})
+
+// execute prepared statements
+console.log(await db.users.findById(5))
+console.log(await db.users.ordered())
 ```
