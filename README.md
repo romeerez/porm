@@ -36,6 +36,7 @@ const db = new Adapter({params})
     * [hasAndBelongsToMany](#hasandbelongstomany)
   - [Scopes](#scopes)
   - [Query Interface](#query-interface)
+  - [Prepared Statements](#prepared-statements)
 
 ## Loading data from related tables
 
@@ -610,3 +611,16 @@ module.exports = {
 ```
 
 `exists` cheap check if record exists, it's doing `SELECT 1 FROM table`
+
+## Prepared statements
+
+Build your query and let Postgres to do planning just once, execute it many times!
+
+It will save few milliseconds, maybe for complex queries will save more.
+
+```js
+const prepared = db.samples.where('id = $1 AND name = $2')
+                   .prepare('filterByIdAndName', 'integer', 'text')
+
+const result = await prepared(5, 'some string')
+```

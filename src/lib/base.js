@@ -3,68 +3,14 @@ const associations = require('./associations')
 const create = require('./create')
 const {update} = require('./update')
 const {delete: deleteRecord} = require('./delete')
-
-const createQuery = (model, prev) => {
-  const object = Object.create(model)
-  const query = {}
-  Object.assign(object, {model, __query: query})
-  if (prev)
-    for (let key in prev)
-      if (Array.isArray(prev[key]))
-        query[key] = [...prev[key]]
-      else
-        query[key] = prev[key]
-  return object
-}
-
-const cloneMethod = (key) => {
-  const modify = `_${key}`
-  return function () {
-    const query = this.clone()
-    return query[modify].apply(query, arguments)
-  }
-}
-
-const modifyMethod = (key) =>
-  function (...args) {
-    const query = this.toQuery()
-    const q = query.__query
-    if (q[key])
-      q[key].push(...args)
-    else
-      q[key] = args
-    return query
-  }
-
-const setValueMethod = (key) =>
-  function (value) {
-    const query = this.toQuery()
-    const q = query.__query
-    q[key] = value
-    return query
-  }
-
-const pushArgs = (model, key, args) => {
-  const query = model.toQuery()
-  const q = query.__query
-  if (q[key])
-    q[key].push(...args)
-  else
-    q[key] = args
-  return query
-}
-
-const setValue = (model, key, value) => {
-  const query = model.toQuery()
-  const q = query.__query
-  q[key] = value
-  return query
-}
+const {prepare} = require('./prepare')
+const {createQuery, cloneMethod, pushArgs, setValue} = require('./queryUtils')
 
 module.exports = {
   ...associations,
+  create, update, prepare,
+  delete: deleteRecord,
   associations: {},
-  create, update, delete: deleteRecord,
 
   toQuery() {
     return this.__query ? this : createQuery(this)
@@ -193,7 +139,7 @@ module.exports = {
 
     const type = query.__query.type || 'objects'
 
-    if (type === 'objects' && query.__query.take) {
+    if ((type === 'objects' || type === 'arrays') && query.__query.take) {
       const original = resolve
       resolve = (result) => {
         original(result[0])
@@ -423,5 +369,5 @@ module.exports = {
 
   _exists() {
     return setValue(this._value(), 'exists', true)
-  }
+  },
 }
