@@ -1,27 +1,27 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const porm_1 = require("../src/porm");
-const db_1 = __importDefault(require("./db"));
-const Message = porm_1.model(db_1.default, 'messages', {
-    relations: {
-        chat: {
-            belongsTo: () => Chat
-        },
-        chatWithScope: {
-            belongsTo: () => Chat,
-            scope: (chats) => chats.active()
-        }
+import {model} from '../src/porm'
+import db from './db'
+import {line} from './utils'
+
+const Message = model(db, 'messages', {
+  relations: {
+    chat: {
+      belongsTo: () => Chat
+    },
+    chatWithScope: {
+      belongsTo: () => Chat,
+      scope: (chats) => chats.active()
     }
-});
-const Chat = porm_1.model(db_1.default, 'chats', {
-    scopes: {
-        active: (chats) => chats.where({ active: true })
-    }
-});
-const User = porm_1.model(db_1.default, 'user_table_name');
+  }
+})
+
+const Chat = model(db, 'chats', {
+  scopes: {
+    active: (chats) => chats.where({active: true})
+  }
+})
+
+const User = model(db, 'user_table_name')
+
 // describe('belongsTo', () => {
 //   it('makes proper query', () => {
 //     const message = {chat_id: 5}

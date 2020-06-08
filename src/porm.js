@@ -1,79 +1,17 @@
-const {plural} = require('pluralize')
-const base = require('./lib/base')
-const associations = require('./lib/associations')
-
-const models = (db, object) => {
-  if (!db.base) {
-    db.base = Object.create(base)
-    db.base.db = db
-  }
-  if (!db.modelByTable) db.modelByTable = {}
-
-  for (let name in object) {
-    const mod = object[name].isModel ? object[name] : model(name, object[name])
-    db.modelByTable[mod.table] = mod
-    db[name] = mod
-    mod.db = db
-  }
-
-  [false, true].forEach(loadThrough => {
-    for (let modelName in object) {
-      const model = db[modelName]
-      for (let key in model) {
-        const method = model[key]
-        if (method && !method.subquery && method.association && (!method.through || loadThrough)) {
-          model[key] = method(db, model, key)
-        }
-      }
-    }
-  })
-
-  for (let modelName in object) {
-    const model = db[modelName]
-    if (model.prepared) {
-      const prepared = model.prepared(db)
-      for (let name in prepared) {
-        const query = prepared[name]
-        model[name] = (query.query || query).prepare(name, ...(query.args || []))
-      }
-    }
-    if (model.queries) {
-      const queries = model.queries(db)
-      for (let name in queries) {
-        model[name] = queries[name]
-      }
-    }
-  }
-
-  return db
-}
-
-const model = (name, object) => {
-  const model = Object.create(base)
-  model.isModel = true
-
-  if (!object.table)
-    model.table = plural(name)
-
-  if (!object.primaryKey)
-    model.primaryKey = 'id'
-
-  Object.assign(model, object)
-
-  model.quotedTable = `"${model.table}"`
-
-  if (object.defaultScope)
-    model.setDefaultScope(object.defaultScope)
-
-  const {scopes} = model
-  if (scopes) {
-    for (let key in scopes)
-      model[key] = function(...args) {
-        return scopes[key](this, ...args)
-      }
-  }
-
-  return model
-}
-
-module.exports = {models, model, base, ...associations}
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const prototype_1 = require("./lib/prototype");
+// import {relation} from './lib/relation'
+exports.model = (db, table, def = {}) => {
+    // const {relations} = def
+    const model = Object.create(prototype_1.prototype);
+    model.db = db;
+    model.table = def.table || table;
+    model.quotedTable = `"${model.table}"`;
+    model.primaryKey = def.primaryKey || 'id';
+    // if (relations)
+    //   Object.keys(relations).forEach(as => {
+    //     model[as] = relation(model, as, relations[as])
+    //   })
+    return model;
+};

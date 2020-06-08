@@ -17,8 +17,12 @@
   "main": "src/porm",
   "license": "MIT",
   "dependencies": {
-    "pg-adapter": "latest",
-    "pluralize": "latest"
+    "@types/jest": "^25.2.1",
+    "@types/node": "^13.13.1",
+    "@types/pluralize": "^0.0.29",
+    "pg-adapter": "^1.1.35",
+    "pluralize": "latest",
+    "typescript": "^3.8.3"
   },
   "devDependencies": {
     "jest": "latest"
