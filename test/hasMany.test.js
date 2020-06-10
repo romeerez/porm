@@ -1,128 +1,64 @@
-const {models, hasMany, belongsTo} = require('../src/porm')
-const db = require('./db')
-const {line} = require('./utils')
-
-models(db, {
-  chats: {
-    messages: hasMany(),
-    messagesWithScope: hasMany({
-      model: 'messages',
-      scope: (messages) => messages.active()
-    })
-  },
-  messages: {
-    images: hasMany({as: 'object'}),
-    imagesWithScope: hasMany({
-      model: 'images',
-      as: 'object',
-      scope: (query) => query.where('active'),
-    }),
-    scopes: {
-      active: (messages) => messages.where({active: true})
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const src_1 = __importDefault(require("../src"));
+const db_1 = __importDefault(require("./db"));
+const utils_1 = require("./utils");
+const model = src_1.default(db_1.default);
+const Message = model('messages', class {
+}).scopes({
+    active() {
+        return this.where({ active: true });
     }
-  },
-  images: {
-    object: belongsTo({polymorphic: true})
-  }
-})
-
+});
+const Chat = model('chats', class {
+}).relations(({ hasMany }) => ({
+    messages: hasMany((params) => Message),
+    messagesWithScope: hasMany((params) => Message.active())
+}));
 describe('hasMany', () => {
-  it('makes proper query', () => {
-    const chat = {id: 5}
-    expect(db.chats.messages(chat).toSql()).toBe(line(`
+    it('makes proper query', () => {
+        const chat = { id: 5 };
+        expect(Chat.messages(chat).toSql()).toBe(utils_1.line(`
       SELECT "messages".* FROM "messages"
-      WHERE "messages"."chat_id" = ${chat.id}
-    `))
-    expect(db.chats.messagesWithScope(chat).toSql()).toBe(line(`
+      WHERE "messages"."chatId" = ${chat.id}
+    `));
+        expect(Chat.messagesWithScope(chat).toSql()).toBe(utils_1.line(`
       SELECT "messages".* FROM "messages"
       WHERE "messages"."active" = true
-        AND "messages"."chat_id" = ${chat.id}
-    `))
-  })
-
-  it('can be joined', () => {
-    const q = db.chats.all()
-    expect(q.join('messages').toSql()).toBe(line(`
+        AND "messages"."chatId" = ${chat.id}
+    `));
+    });
+    it('can be joined', () => {
+        const q = Chat.all();
+        expect(q.join('messages').toSql()).toBe(utils_1.line(`
       SELECT "chats".* FROM "chats"
-      JOIN "messages" ON "messages"."chat_id" = "chats"."id"
-    `))
-    expect(q.join('messagesWithScope').toSql()).toBe(line(`
+      JOIN "messages" ON "messages"."chatId" = "chats"."id"
+    `));
+        expect(q.join('messagesWithScope').toSql()).toBe(utils_1.line(`
       SELECT "chats".* FROM "chats"
       JOIN "messages"
         ON "messages"."active" = true
-       AND "messages"."chat_id" = "chats"."id"
-    `))
-  })
-
-  it('has json subquery', () => {
-    expect(db.chats.messages.json().toSql()).toBe(line(`
+       AND "messages"."chatId" = "chats"."id"
+    `));
+    });
+    it('has json subquery', () => {
+        expect(Chat.messages.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
       FROM (
         SELECT "messages".* FROM "messages"
-        WHERE "messages"."chat_id" = "chats"."id"
+        WHERE "messages"."chatId" = "chats"."id"
       ) "t"
-    `))
-    expect(db.chats.messagesWithScope.json().toSql()).toBe(line(`
+    `));
+        expect(Chat.messagesWithScope.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
       FROM (
         SELECT "messages".* FROM "messages"
         WHERE "messages"."active" = true
-          AND "messages"."chat_id" = "chats"."id"
+          AND "messages"."chatId" = "chats"."id"
       ) "t"
-    `))
-  })
-
-  describe('as', () => {
-    it('makes proper query', () => {
-      const message = {id: 5}
-      expect(db.messages.images(message).toSql()).toBe(line(`
-        SELECT "images".* FROM "images"
-        WHERE "images"."object_id" = ${message.id}
-          AND "images"."object_type" = 'messages'
-      `))
-      expect(db.messages.imagesWithScope(message).toSql()).toBe(line(`
-        SELECT "images".* FROM "images"
-        WHERE active
-          AND "images"."object_id" = ${message.id}
-          AND "images"."object_type" = 'messages'
-      `))
-    })
-
-    it('can be joined', () => {
-      const q = db.messages.all()
-      expect(q.join('images').toSql()).toBe(line(`
-        SELECT "messages".* FROM "messages"
-        JOIN "images"
-          ON "images"."object_id" = "messages"."id"
-         AND "images"."object_type" = 'messages'
-      `))
-      expect(q.join('imagesWithScope').toSql()).toBe(line(`
-        SELECT "messages".* FROM "messages"
-        JOIN "images"
-          ON active
-         AND "images"."object_id" = "messages"."id"
-         AND "images"."object_type" = 'messages'
-      `))
-    })
-
-    it('has json subquery', () => {
-      expect(db.messages.images.json().toSql()).toBe(line(`
-        SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
-        FROM (
-          SELECT "images".* FROM "images"
-          WHERE "images"."object_id" = "messages"."id"
-            AND "images"."object_type" = 'messages'
-        ) "t"
-      `))
-      expect(db.messages.imagesWithScope.json().toSql()).toBe(line(`
-        SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
-        FROM (
-          SELECT "images".* FROM "images"
-          WHERE active
-            AND "images"."object_id" = "messages"."id"
-            AND "images"."object_type" = 'messages'
-        ) "t"
-      `))
-    })
-  })
-})
+    `));
+    });
+});

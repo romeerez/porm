@@ -3,11 +3,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const porm_1 = require("../src/porm");
+const src_1 = __importDefault(require("../src"));
 const utils_1 = require("./utils");
 const db_1 = __importDefault(require("./db"));
-const User = porm_1.model(db_1.default, 'users');
-const Chat = porm_1.model(db_1.default, 'chats');
+const model = src_1.default(db_1.default);
+const User = model('users', class {
+});
+const Chat = model('chats', class {
+});
+const Message = model('messages', class {
+});
 describe('toQuery', () => {
     it('creates a query with same props as model', () => {
         const query = User.toQuery();
@@ -22,9 +27,7 @@ describe('toQuery', () => {
 describe('all', () => {
     it('returns query, if `take` prop present query is cloned, clears `take` property', () => {
         const q = User.all();
-        expect(q).toHaveProperty('__query');
         expect(q.all()).toBe(q);
-        expect(q.__query).not.toHaveProperty('take');
         q._take();
         expect(q.__query).toHaveProperty('take');
         expect(q.all()).not.toBe(q);
@@ -95,78 +98,41 @@ describe('take', () => {
         expect(q.toSql()).not.toContain('LIMIT 1');
     });
 });
-describe('resultType', () => {
-    it('calling on db when accessing `then`', () => {
-        const q = User.all();
-        q.resultType('value').then();
-        expect(db_1.default.value).toBeCalledWith(expect.anything());
-        q.then();
-        expect(db_1.default.objects).toBeCalledWith(expect.anything());
-    });
-    it('has modifier', () => {
-        const q = User.all();
-        q._resultType('value');
-        q.then();
-        expect(db_1.default.value).toBeCalledWith(expect.anything());
-    });
-});
-describe('objects', () => {
-    it('calls objects method of db', () => {
-        const q = User.arrays();
-        q.objects().then();
-        expect(db_1.default.objects).toBeCalledWith(expect.anything());
-        q.then();
-        expect(db_1.default.arrays).toBeCalledWith(expect.anything());
-    });
-    it('has modifier', () => {
-        const q = User.arrays();
-        q._resultType('objects');
-        q.then();
-        expect(db_1.default.objects).toBeCalledWith(expect.anything());
-    });
-});
 describe('arrays', () => {
-    it('calls arrays method of db', () => {
-        const q = User.arrays();
-        q.arrays().then();
+    it('calls arrays method of db', async () => {
+        await User.rows();
         expect(db_1.default.arrays).toBeCalledWith(expect.anything());
-        q.then();
-        expect(db_1.default.objects).toBeCalledWith(expect.anything());
     });
-    it('has modifier', () => {
-        const q = User.objects();
-        q._resultType('arrays');
-        q.then();
+    it('has modifier', async () => {
+        const q = User.all();
+        q._rows();
+        await q;
         expect(db_1.default.arrays).toBeCalledWith(expect.anything());
     });
 });
 describe('value', () => {
-    it('calls value method of db', () => {
+    it('calls value method of db', async () => {
         const q = User.value();
-        q.value().then();
+        await q.value();
         expect(db_1.default.value).toBeCalledWith(expect.anything());
-        q.then();
-        expect(db_1.default.objects).toBeCalledWith(expect.anything());
     });
-    it('has modifier', () => {
-        const q = User.objects();
-        q._resultType('value');
-        q.then();
+    it('has modifier', async () => {
+        const q = User.all();
+        q._value();
+        await q;
         expect(db_1.default.value).toBeCalledWith(expect.anything());
     });
 });
 describe('exec', () => {
-    it('calls exec method of db', () => {
+    it('calls exec method of db', async () => {
         const q = User.exec();
-        q.exec().then();
+        await q;
         expect(db_1.default.exec).toBeCalledWith(expect.anything());
-        q.then();
-        expect(db_1.default.objects).toBeCalledWith(expect.anything());
     });
-    it('has modifier', () => {
-        const q = User.objects();
-        q._resultType('exec');
-        q.then();
+    it('has modifier', async () => {
+        const q = User.all();
+        q._exec();
+        await q;
         expect(db_1.default.exec).toBeCalledWith(expect.anything());
     });
 });
@@ -256,21 +222,24 @@ describe('from', () => {
     });
 });
 describe('where', () => {
+    let [and, _and] = [User.and, User._and];
     beforeEach(() => {
+        User.and = jest.fn();
         User._and = jest.fn();
     });
     afterAll(() => {
-        delete User._and;
+        User.and = and;
+        User._and = _and;
     });
     it('is alias to and', () => {
         const q = User.all();
         q.where();
-        expect(q._and).toBeCalled();
+        expect(q.and).toBeCalled();
     });
     it('has modifier', () => {
         const q = User.all();
         q._where();
-        expect(q.__query.and).not.toBeUndefined();
+        expect(q._and).toBeCalled();
     });
 });
 describe('and', () => {
@@ -508,20 +477,20 @@ describe('join', () => {
       SELECT "users".* FROM "users"
       JOIN "table" AS "as" ON on
     `));
-        // expect(q.join(Message.where('a').or('b').as('as')).toSql()).toBe(line(`
-        //   SELECT "users".* FROM "users"
-        //   JOIN "messages" AS "as" ON a OR b
-        // `))
-        // expect(q.toSql()).toBe('SELECT "users".* FROM "users"')
+        expect(q.join(Message.where('a').or('b').as('as')).toSql()).toBe(utils_1.line(`
+      SELECT "users".* FROM "users"
+      JOIN "messages" AS "as" ON a OR b
+    `));
+        expect(q.toSql()).toBe('SELECT "users".* FROM "users"');
     });
-    // it('has modifier', () => {
-    //   const q = User.all()
-    //   q._join('table', 'as', 'on')
-    //   expect(q.toSql()).toBe(line(`
-    //     SELECT "users".* FROM "users"
-    //     JOIN "table" AS "as" ON on
-    //   `))
-    // })
+    it('has modifier', () => {
+        const q = User.all();
+        q._join('table', 'as', 'on');
+        expect(q.toSql()).toBe(utils_1.line(`
+      SELECT "users".* FROM "users"
+      JOIN "table" AS "as" ON on
+    `));
+    });
 });
 describe('exists', () => {
     it('selects 1', () => {

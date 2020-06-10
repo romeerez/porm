@@ -1,18 +1,21 @@
-import {model} from '../src/porm'
+import porm from '../src'
 import {line} from './utils'
 import db from './db'
 
-const User = model(db, 'users')
-const Chat = model(db, 'chats')
+const model = porm(db)
+
+const User = model('users', class {})
+const Chat = model('chats', class {})
+const Message = model('messages', class {})
 
 describe('toQuery', () => {
   it('creates a query with same props as model', () => {
     const query = User.toQuery()
     expect(query).not.toBe(User)
     for (let key in User) {
-      const value = User[key]
+      const value = (User as any)[key]
       if (value !== undefined)
-        expect(query[key]).toBe(value)
+        expect((query as any)[key]).toBe(value)
     }
   })
 })
@@ -20,9 +23,7 @@ describe('toQuery', () => {
 describe('all', () => {
   it('returns query, if `take` prop present query is cloned, clears `take` property', () => {
     const q = User.all()
-    expect(q).toHaveProperty('__query')
     expect(q.all()).toBe(q)
-    expect(q.__query).not.toHaveProperty('take')
     q._take()
     expect(q.__query).toHaveProperty('take')
     expect(q.all()).not.toBe(q)
@@ -108,87 +109,46 @@ describe('take', () => {
   })
 })
 
-describe('resultType', () => {
-  it('calling on db when accessing `then`', () => {
-    const q = User.all()
-    q.resultType('value').then()
-    expect(db.value).toBeCalledWith(expect.anything())
-    q.then()
-    expect(db.objects).toBeCalledWith(expect.anything())
-  })
-
-  it('has modifier', () => {
-    const q = User.all()
-    q._resultType('value')
-    q.then()
-    expect(db.value).toBeCalledWith(expect.anything())
-  })
-})
-
-describe('objects', () => {
-  it('calls objects method of db', () => {
-    const q = User.arrays()
-    q.objects().then()
-    expect(db.objects).toBeCalledWith(expect.anything())
-    q.then()
-    expect(db.arrays).toBeCalledWith(expect.anything())
-  })
-
-  it('has modifier', () => {
-    const q = User.arrays()
-    q._resultType('objects')
-    q.then()
-    expect(db.objects).toBeCalledWith(expect.anything())
-  })
-})
-
 describe('arrays', () => {
-  it('calls arrays method of db', () => {
-    const q = User.arrays()
-    q.arrays().then()
+  it('calls arrays method of db', async () => {
+    await User.rows()
     expect(db.arrays).toBeCalledWith(expect.anything())
-    q.then()
-    expect(db.objects).toBeCalledWith(expect.anything())
   })
 
-  it('has modifier', () => {
-    const q = User.objects()
-    q._resultType('arrays')
-    q.then()
+  it('has modifier', async () => {
+    const q = User.all()
+    q._rows()
+    await q
     expect(db.arrays).toBeCalledWith(expect.anything())
   })
 })
 
 describe('value', () => {
-  it('calls value method of db', () => {
+  it('calls value method of db', async () => {
     const q = User.value()
-    q.value().then()
+    await q.value()
     expect(db.value).toBeCalledWith(expect.anything())
-    q.then()
-    expect(db.objects).toBeCalledWith(expect.anything())
   })
 
-  it('has modifier', () => {
-    const q = User.objects()
-    q._resultType('value')
-    q.then()
+  it('has modifier', async () => {
+    const q = User.all()
+    q._value()
+    await q
     expect(db.value).toBeCalledWith(expect.anything())
   })
 })
 
 describe('exec', () => {
-  it('calls exec method of db', () => {
+  it('calls exec method of db', async () => {
     const q = User.exec()
-    q.exec().then()
+    await q
     expect(db.exec).toBeCalledWith(expect.anything())
-    q.then()
-    expect(db.objects).toBeCalledWith(expect.anything())
   })
 
-  it('has modifier', () => {
-    const q = User.objects()
-    q._resultType('exec')
-    q.then()
+  it('has modifier', async () => {
+    const q = User.all()
+    q._exec()
+    await q
     expect(db.exec).toBeCalledWith(expect.anything())
   })
 })
@@ -290,23 +250,26 @@ describe('from', () => {
 })
 
 describe('where', () => {
+  let [and, _and] = [User.and, User._and]
   beforeEach(() => {
+    User.and = jest.fn()
     User._and = jest.fn()
   })
   afterAll(() => {
-    delete User._and
+    User.and = and
+    User._and = _and
   })
 
   it('is alias to and', () => {
     const q = User.all()
     q.where()
-    expect(q._and).toBeCalled()
+    expect(q.and).toBeCalled()
   })
 
   it('has modifier', () => {
     const q = User.all()
     q._where()
-    expect(q.__query.and).not.toBeUndefined()
+    expect(q._and).toBeCalled()
   })
 })
 
@@ -458,7 +421,7 @@ describe('window', () => {
   const upper = what.toUpperCase()
   describe(what, () => {
     it(`adds ${what}`, () => {
-      const q = User.all()
+      const q = User.all() as any
       let query = q.select('id')
       query = query[what].call(query, Chat.select('id'), 'SELECT 1')
       query = query[what + 'All'].call(query, 'SELECT 2')
@@ -479,7 +442,7 @@ describe('window', () => {
     })
 
     it('has modifier', () => {
-      const q = User.select('id')
+      const q = User.select('id') as any
       q[`_${what}`].call(q, 'SELECT 1')
       expect(q.toSql()).toBe(line(`
         SELECT "users"."id" FROM "users"
@@ -574,21 +537,21 @@ describe('join', () => {
       SELECT "users".* FROM "users"
       JOIN "table" AS "as" ON on
     `))
-    // expect(q.join(Message.where('a').or('b').as('as')).toSql()).toBe(line(`
-    //   SELECT "users".* FROM "users"
-    //   JOIN "messages" AS "as" ON a OR b
-    // `))
-    // expect(q.toSql()).toBe('SELECT "users".* FROM "users"')
+    expect(q.join(Message.where('a').or('b').as('as')).toSql()).toBe(line(`
+      SELECT "users".* FROM "users"
+      JOIN "messages" AS "as" ON a OR b
+    `))
+    expect(q.toSql()).toBe('SELECT "users".* FROM "users"')
   })
 
-  // it('has modifier', () => {
-  //   const q = User.all()
-  //   q._join('table', 'as', 'on')
-  //   expect(q.toSql()).toBe(line(`
-  //     SELECT "users".* FROM "users"
-  //     JOIN "table" AS "as" ON on
-  //   `))
-  // })
+  it('has modifier', () => {
+    const q = User.all()
+    q._join('table', 'as', 'on')
+    expect(q.toSql()).toBe(line(`
+      SELECT "users".* FROM "users"
+      JOIN "table" AS "as" ON on
+    `))
+  })
 })
 
 describe('exists', () => {

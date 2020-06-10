@@ -1,137 +1,70 @@
-const {models, belongsTo, hasOne} = require('../src/porm')
-const db = require('./db')
-const {line} = require('./utils')
-
-models(db, {
-  users: {
-    avatar: hasOne({model: 'images', as: 'object'}),
-    avatarWithScope: hasOne({
-      model: 'images',
-      as: 'object',
-      scope: (query) => query.where('active')
-    }),
-    profile: hasOne(),
-    profileWithScope: hasOne({
-      model: 'profiles',
-      scope: (profiles) => profiles.active()
-    })
-  },
-  profiles: {
-    scopes: {
-      active: (profiles) => profiles.where({active: true})
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.User = void 0;
+const src_1 = __importDefault(require("../src"));
+const db_1 = __importDefault(require("./db"));
+const utils_1 = require("./utils");
+const model = src_1.default(db_1.default);
+const Profile = model('profiles', class {
+}).scopes({
+    active() {
+        return this.where({ active: true });
     }
-  },
-  images: {
-    object: belongsTo({polymorphic: true})
-  }
-})
-
+});
+exports.User = model('users', class {
+}).relations(({ hasOne }) => ({
+    profile: hasOne((params) => Profile),
+    profileWithScope: hasOne((params) => Profile.active())
+}));
 describe('hasOne', () => {
-  it('makes proper query', () => {
-    const user = {id: 5}
-    expect(db.users.profile(user).toSql()).toBe(line(`
+    it('makes proper query', () => {
+        const user = { id: 5 };
+        expect(exports.User.profile(user).toSql()).toBe(utils_1.line(`
       SELECT "profiles".* FROM "profiles"
-      WHERE "profiles"."user_id" = ${user.id}
+      WHERE "profiles"."userId" = ${user.id}
       LIMIT 1
-    `))
-    expect(db.users.profileWithScope(user).toSql()).toBe(line(`
+    `));
+        expect(exports.User.profileWithScope(user).toSql()).toBe(utils_1.line(`
       SELECT "profiles".* FROM "profiles"
       WHERE "profiles"."active" = true
-        AND "profiles"."user_id" = ${user.id}
+        AND "profiles"."userId" = ${user.id}
       LIMIT 1
-    `))
-  })
-
-  it('can be joined', () => {
-    const q = db.users.all()
-    expect(q.join('profile').toSql()).toBe(line(`
+    `));
+    });
+    it('can be joined', () => {
+        const q = exports.User.all();
+        expect(q.join('profile').toSql()).toBe(utils_1.line(`
       SELECT "users".* FROM "users"
       JOIN "profiles"
-        ON "profiles"."user_id" = "users"."id"
-    `))
-    expect(q.join('profileWithScope').toSql()).toBe(line(`
+        ON "profiles"."userId" = "users"."id"
+    `));
+        expect(q.join('profileWithScope').toSql()).toBe(utils_1.line(`
       SELECT "users".* FROM "users"
       JOIN "profiles"
         ON "profiles"."active" = true
-       AND "profiles"."user_id" = "users"."id"
-    `))
-  })
-
-  it('has json subquery', () => {
-    expect(db.users.profile.json().toSql()).toBe(line(`
+       AND "profiles"."userId" = "users"."id"
+    `));
+    });
+    it('has json subquery', () => {
+        expect(exports.User.profile.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(row_to_json("t".*), '{}') AS json
       FROM (
         SELECT "profiles".* FROM "profiles"
-        WHERE "profiles"."user_id" = "users"."id"
+        WHERE "profiles"."userId" = "users"."id"
         LIMIT 1
       ) "t"
-    `))
-    expect(db.users.profileWithScope.json().toSql()).toBe(line(`
+    `));
+        expect(exports.User.profileWithScope.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(row_to_json("t".*), '{}') AS json
       FROM (
         SELECT "profiles".* FROM "profiles"
         WHERE "profiles"."active" = true
-          AND "profiles"."user_id" = "users"."id"
+          AND "profiles"."userId" = "users"."id"
         LIMIT 1
       ) "t"
-    `))
-  })
-
-  describe('as', () => {
-    it('makes proper query', () => {
-      const user = {id: 5}
-      expect(db.users.avatar(user).toSql()).toBe(line(`
-        SELECT "images".* FROM "images"
-        WHERE "images"."object_id" = ${user.id}
-          AND "images"."object_type" = 'users'
-        LIMIT 1
-      `))
-      expect(db.users.avatarWithScope(user).toSql()).toBe(line(`
-        SELECT "images".* FROM "images"
-        WHERE active
-          AND "images"."object_id" = ${user.id}
-          AND "images"."object_type" = 'users'
-        LIMIT 1
-      `))
-    })
-
-    it('can be joined', () => {
-      const q = db.users.all()
-      expect(q.join('avatar').toSql()).toBe(line(`
-        SELECT "users".* FROM "users"
-        JOIN "images"
-          ON "images"."object_id" = "users"."id"
-         AND "images"."object_type" = 'users'
-      `))
-      expect(q.join('avatarWithScope').toSql()).toBe(line(`
-        SELECT "users".* FROM "users"
-        JOIN "images"
-          ON active
-         AND "images"."object_id" = "users"."id"
-         AND "images"."object_type" = 'users'
-      `))
-    })
-
-    it('has json subquery', () => {
-      expect(db.users.avatar.json().toSql()).toBe(line(`
-        SELECT COALESCE(row_to_json("t".*), '{}') AS json
-        FROM (
-          SELECT "images".* FROM "images"
-          WHERE "images"."object_id" = "users"."id"
-            AND "images"."object_type" = 'users'
-          LIMIT 1
-        ) "t"
-      `))
-      expect(db.users.avatarWithScope.json().toSql()).toBe(line(`
-        SELECT COALESCE(row_to_json("t".*), '{}') AS json
-        FROM (
-          SELECT "images".* FROM "images"
-          WHERE active
-            AND "images"."object_id" = "users"."id"
-            AND "images"."object_type" = 'users'
-          LIMIT 1
-        ) "t"
-      `))
-    })
-  })
-})
+    `));
+    });
+});

@@ -1,77 +1,76 @@
-const {models, hasAndBelongsToMany} = require('../src/porm')
-const db = require('./db')
-const {line} = require('./utils')
-
-models(db, {
-  users: {
-    chats: hasAndBelongsToMany(),
-    chatsWithScope: hasAndBelongsToMany({
-      model: 'chats',
-      scope: (chats) => chats.active()
-    })
-  },
-  chats: {
-    scopes: {
-      active: (chats) => chats.where({active: true})
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const src_1 = __importDefault(require("../src"));
+const db_1 = __importDefault(require("./db"));
+const utils_1 = require("./utils");
+const model = src_1.default(db_1.default);
+const Chat = model('chats', class {
+}).scopes({
+    active() {
+        return this.where({ active: true });
     }
-  }
-})
-
+});
+const User = model('users', class {
+}).relations(({ hasAndBelongsToMany }) => ({
+    chats: hasAndBelongsToMany((params) => Chat),
+    chatsWithScope: hasAndBelongsToMany((params) => Chat.active())
+}));
 describe('hasAndBelongsToMany', () => {
-  it('makes proper query', () => {
-    const user = {id: 5}
-    expect(db.users.chats(user).toSql()).toBe(line(`
+    it('makes proper query', () => {
+        const user = { id: 5 };
+        expect(User.chats(user).toSql()).toBe(utils_1.line(`
       SELECT "chats".* FROM "chats"
-      JOIN "chats_users"
-        ON "chats_users"."user_id" = 5
-      WHERE "chats"."id" = "chats_users"."chat_id"
-    `))
-    expect(db.users.chatsWithScope(user).toSql()).toBe(line(`
+      JOIN "chatsUsers"
+        ON "chatsUsers"."userId" = 5
+      WHERE "chats"."id" = "chatsUsers"."chatId"
+    `));
+        expect(User.chatsWithScope(user).toSql()).toBe(utils_1.line(`
       SELECT "chats".* FROM "chats"
-      JOIN "chats_users"
-        ON "chats_users"."user_id" = 5
-      WHERE "chats"."active" = true
-        AND "chats"."id" = "chats_users"."chat_id"
-    `))
-  })
-
-  it('can be joined', () => {
-    const q = db.users.all()
-    expect(q.join('chats').toSql()).toBe(line(`
+      JOIN "chatsUsers"
+        ON "chatsUsers"."userId" = 5
+      WHERE "chats"."id" = "chatsUsers"."chatId"
+        AND "chats"."active" = true
+    `));
+    });
+    it('can be joined', () => {
+        const q = User.all();
+        expect(q.join('chats').toSql()).toBe(utils_1.line(`
       SELECT "users".* FROM "users"
-        JOIN "chats_users"
-          ON "chats_users"."user_id" = "users"."id"
-        JOIN "chats" ON "chats"."id" = "chats_users"."chat_id"
-    `))
-    expect(q.join('chatsWithScope').toSql()).toBe(line(`
+        JOIN "chatsUsers"
+          ON "chatsUsers"."userId" = "users"."id"
+        JOIN "chats" ON "chats"."id" = "chatsUsers"."chatId"
+    `));
+        expect(q.join('chatsWithScope').toSql()).toBe(utils_1.line(`
       SELECT "users".* FROM "users"
-        JOIN "chats_users"
-          ON "chats_users"."user_id" = "users"."id"
+        JOIN "chatsUsers"
+          ON "chatsUsers"."userId" = "users"."id"
         JOIN "chats"
-          ON "chats"."active" = true
-         AND "chats"."id" = "chats_users"."chat_id"
-    `))
-  })
-
-  it('has json subquery', () => {
-    expect(db.users.chats.json().toSql()).toBe(line(`
+          ON "chats"."id" = "chatsUsers"."chatId"
+         AND "chats"."active" = true
+    `));
+    });
+    it('has json subquery', () => {
+        expect(User.chats.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
       FROM (
         SELECT "chats".* FROM "chats"
-        JOIN "chats_users"
-          ON "chats_users"."user_id" = "users"."id"
-        WHERE "chats"."id" = "chats_users"."chat_id"
+        JOIN "chatsUsers"
+          ON "chatsUsers"."userId" = "users"."id"
+        WHERE "chats"."id" = "chatsUsers"."chatId"
       ) "t"
-    `))
-    expect(db.users.chatsWithScope.json().toSql()).toBe(line(`
+    `));
+        expect(User.chatsWithScope.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
       FROM (
         SELECT "chats".* FROM "chats"
-        JOIN "chats_users"
-          ON "chats_users"."user_id" = "users"."id"
-        WHERE "chats"."active" = true
-          AND "chats"."id" = "chats_users"."chat_id"
+        JOIN "chatsUsers"
+          ON "chatsUsers"."userId" = "users"."id"
+        WHERE "chats"."id" = "chatsUsers"."chatId"
+          AND "chats"."active" = true
       ) "t"
-    `))
-  })
-})
+    `));
+    });
+});

@@ -1,6 +1,6 @@
 {
   "name": "porm",
-  "version": "1.0.10",
+  "version": "1.1.0",
   "description": "Postgres ORM",
   "repository": "https://gitlab.com/romikus/porm",
   "author": "Roman Kushyn",
@@ -14,17 +14,16 @@
     "model",
     "sql"
   ],
-  "main": "src/porm",
+  "main": "src/index",
   "license": "MIT",
   "dependencies": {
-    "@types/jest": "^25.2.1",
-    "@types/node": "^13.13.1",
-    "@types/pluralize": "^0.0.29",
-    "pg-adapter": "^1.1.35",
+    "@types/pluralize": "latest",
+    "pg-adapter": "^1.1.41",
     "pluralize": "latest",
     "typescript": "^3.8.3"
   },
   "devDependencies": {
+    "@types/jest": "^26.0.0",
     "jest": "latest"
   }
 }
