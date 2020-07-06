@@ -26,8 +26,6 @@ User record has one profile, chat record has many messages, message belongs to u
 
 Now let's get single json of all records together! Let's leave model definitions for later.
 
-Select all chats:
-
 ```ts
 const result = await Chat.include({
   messages: Message.include({
@@ -132,9 +130,9 @@ const db = Adapter.fromURL('postgres://postgres:@localhost:5432/porm')
 export default porm(db, {camelCase: true}) // by default camelCase is turned on, you can switch it off here
 ```
 
-Read about how to configure database here: [pg-adapter](https://www.npmjs.com/package/pg-adapter)
+Read about how to set up connection (db name, user, password) here: [pg-adapter](https://www.npmjs.com/package/pg-adapter)
 
-To define user model (`src/app/user/model.ts`):
+Here is how basic model looks like (`src/app/user/model.ts`):
 
 ```ts
 import porm from 'porm'
@@ -246,4 +244,4 @@ const products = await Product.cheap().fresh().search('doughnut')
 
 ## Docs
 
-Hundreds of features left uncovered, please let me know that you are interested giving a star in repo, and I will write complete docs soon.
+Hundreds of features left uncovered, if you are interested, please let me know by giving a star in repo, and I will write complete docs soon.
