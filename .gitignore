@@ -6,4 +6,5 @@ yarn-error.log
 test.*
 todo.txt
 typeorm
+objection
 PREV_README.md

@@ -30,7 +30,7 @@ Now let's get single json of all records together! Let's leave model definitions
 const result = await Chat.include({
   messages: Message.include({
     user: User.include('profile')
-  })
+  }).last()
 }).json()
 ```
 
