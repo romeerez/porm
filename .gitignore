@@ -5,3 +5,5 @@ yarn.lock
 yarn-error.log
 test.*
 todo.txt
+typeorm
+PREV_README.md

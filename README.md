@@ -2,664 +2,248 @@
 
 Postgres ORM.
 
-I wanted to name it `pgorm`, then flash, `porm` is great name for a great library!
-
 Features:
 
-- Similar to ActiveRecord query interface
+- Easy to use query interface
 - Models relations:
-  * *belonsTo*, polymorphic option supported
-  * *hasOne* and *hasMany*, through option supported
+  * *belonsTo*
+  * *hasOne* and *hasMany*, *through* option supported
   * *hasAndBelongsToMany*
 - Plain data structures
 - Efficient loading of related tables data
 
-I consider main feature is loading related data using JSON aggregations from Postgres.
-About this read in the first section.
+Designed to use with TypeScript only.
 
-In further examples `db` variable will be instance of [pg-adapter](https://www.npmjs.com/package/pg-adapter):
+For migrations, I suggest trying [rake-db](https://www.npmjs.com/package/rake-db)
 
-```js
-const {Adapter} = require('pg-adapter')
+## Brief example of main feature
 
-const db = new Adapter({params})
+Here is brief example how easy is to combine multiple tables into one json result.
+
+Imagine that we are building another messenger, with users and chat rooms.
+
+User record has one profile, chat record has many messages, message belongs to user, users have many chats.
+
+Now let's get single json of all records together! Let's leave model definitions for later.
+
+Select all chats:
+
+```ts
+const result = await Chat.include({
+  messages: Message.include({
+    user: User.include('profile')
+  })
+}).json()
 ```
 
-## Table of Contents
-* [Loading data from related tables](#loading-data-from-related-tables)
-* [Getting started](#getting-started)
-* [Define models](#define-models)
-  - [Relations](#relations)
-    * [belongsTo](#belongsto)
-    * [hasOne](#hasone)
-    * [hasMany](#hasmany)
-    * [hasAndBelongsToMany](#hasandbelongstomany)
-  - [Scopes](#scopes)
-  - [Queries](#queries)
-* [Query Interface](#query-interface)
-* [Prepared Statements](#prepared-statements)
+It produces single SQL query and returns JSON like this:
 
-## Loading data from related tables
-
-Let's have such database tables:
-
-- user has one profile and many chats
-- profile belongs to user
-- chats have many users and many messages
-- message belongs to chat
-
-You have an ID of the user and want to load all this data,
-chats and messages should be loaded ordered by `created_at` column,
-here goes this ORM:
-
-```js
-const result = db.users.select('*', 'profile', {
-  chats: db.users.chats.select('*', {
-    messages: db.chats.messages.order({created_at: 'desc'}),
-  }).order({created_at: 'desc'})
-}).take().json()
+```json
+[{
+  "id": 1,
+  "title": "chat title",
+  "messages": [{
+    "id": 1,
+    "text": "message text",
+    "userId": 1,
+    "user": {
+      "id": 1,
+      "name": "user name",
+      "profileId": 1,
+      "profile": {
+        "id": 1,
+        "photo": "url to photo"
+      }
+    }
+  }]
+}]
 ```
 
-I don't sure if it is readable enough, it can be rewrited with variables:
+That's all, this was the main reason to create this library.
 
-```js
-const messages = db.chats.messages.order({created_at: 'desc'})
-const chats = db.users.chats.select('*', {messages}).order({created_at: 'desc'})
-const result = db.users.select('*', 'profile', {chats}).take().json()
+As I know, no other js library for postgres can do such a basic thing.
+
+## Examples of most common operations
+
+```ts
+const allUsers = await User.all()
+const count = await User.count()
+const trueOfFalse = await User.where({name: 'John'}).exists()
+const randomUser = await User.take()
+const first = await User.first() // ordered by id, first is object, typescript know it's type
+const first5 = await User.first(5) // ordered by id, first5 is array, typescript is aware of types too
+const last = await User.last() // get the latest created user
+const last5 = await User.last(5) // get the latest created user
+const byId = await User.find(1) // where id = 1, find returns single user object
+
+const exampleOfQueryInterface = await (
+  User.select('id', 'name')
+      .join('profile') // profile is a hasOne relation in this case
+      .where({name: 'Bob'}).or({name: 'Alice'})
+      .order({id: 'desc'})
+      .limit(5)
+      .offset(10)
+)
+
+const createdUser = await User.create({name: 'Bob'})
+const createdUserArray = await User.create([{name: 'John'}, {name: 'Peter'}])
+
+const updatedUser = await User.update(createdUser, {name: 'New name'})
+const updatedUserUsingId = await User.update(1, {name: 'New name'})
+const updateAll = await User.where({name: 'Old name'}).updateAll({name: 'New name'})
+
+await User.delete(1) // Delete user with id = 1
+await User.delete([1, 2, 3]) // Delete users where id is one of 1, 2 3
+await User.where('something').deleteAll() // delete all by condition
 ```
 
-## Getting started
+## Get started
 
-Install:
+You can place models wherever you like.
 
-```bash
-npm i porm
-yarn add porm
+Personally I prefer suggestion from [node best practices](https://github.com/goldbergyoni/nodebestpractices/blob/master/sections/projectstructre/breakintcomponents.md)
+
+*Good: Structure your solution by self-contained components*
+
+*Bad: Group your files by technical role*
+
+And project could use such structure:
+
+```
+- project
+  - src
+    - app // much shorter than "components"
+      - user
+        model.ts // model goes here
+        api.ts // layer between router and logic, other people may name it "controller"
+        actions.ts // such as log in, sign up etc, other people may name it "service"
+    - config
+      model.ts // configure db connection here
+  package.json and others
 ```
 
-Then create database, create tables, I recommend
-[rake-db](https://www.npmjs.com/package/rake-db)
-for it.
+To define connection settings (`src/config/model.ts`):
 
-`porm` depends on connection provided by [pg-adapter](https://www.npmjs.com/package/pg-adapter):
+```ts
+import {Adapter} from "pg-adapter"
+import porm from 'porm'
 
-## Define models
-
-In case of very small application models could be defined in one file:
-
-```js
-const {models, hasMany, belongsTo} = require('porm')
-const {Adapter} = require('pg-adapter')
-
-const db = new Adapter({params})
-
-module.exports = models(db, {
-  artists: {
-    songs: hasMany()
-  },
-  songs: {
-    artist: belongsTo()
-  },
-})
+const db = Adapter.fromURL('postgres://postgres:@localhost:5432/porm')
+export default porm(db, {camelCase: true}) // by default camelCase is turned on, you can switch it off here
 ```
 
-Instead, I suggest to use component approach recommended in
-[best practices](
-  https://github.com/goldbergyoni/nodebestpractices/blob/master/sections/projectstructre/breakintcomponents.md
-).
+Read about how to configure database here: [pg-adapter](https://www.npmjs.com/package/pg-adapter)
 
-```js
-// src/components/artists/model.js
-const {model, hasMany} = require('porm')
+To define user model (`src/app/user/model.ts`):
 
-module.exports = model('artists', {
-  songs: hasMany()
-})
+```ts
+import porm from 'porm'
+import model from 'config/model'
 
-// src/components/songs/model.js
-const {model, belongsTo} = require('porm')
-
-module.exports = model('songs', {
-  artist: belongsTo()
-})
-
-// src/db/index.js
-const {models} = require('porm')
-const {Adapter} = require('pg-adapter')
-
-const db = new Adapter({params})
-
-module.exports = models(db, {
-  artists: require('components/artists/model'),
-  songs: require('components/songs/model'),
-})
-
-// usage.js
-const db = require('db')
-
-const artists = await db.artists.all()
-
-// or directly require a model:
-const songs = require('components/songs/model')
-
-const result = songs.all()
-```
-
-Anyway, all models must be passed to `models` function which will create relations between different models.
-
-Model options:
-
-```js
-model('samples', {
-  table: 'samples', // can be some other name
-  defaultScope: (query) => query.where({hidden: false})
+export const UserModel = model('users', class UserEntity {
+  id: number
+  name: string
+  
+  @porm.hidden
+  password: string
 })
 
-// filtered samples with defaultScope
-const samples = await db.samples.all()
-
-// use unscoped to get all samples
-const allSamples = await db.samples.unscoped()
+export const User = UserModel // explanation later
 ```
 
-### Relations
+First argument 'users' is table name to use.
 
-There are [belongsTo](#belongsto), [hasOne](#hasone),
-[hasMany](#hasmany) and [hasAndBelongsToMany](#hasandbelongstomany) relations.
+Second argument is class with column types for typescript.
+It could be interface instead of class, but to be able to use decorators this is class.
 
-Currently there are duplications in relation definition, it will be shortened soon.
+`@porm.hidden` marks column as hidden by default, so `await User.take` will return user without a password.
 
-#### belongsTo
+To get such hidden column you must specify it in select:
+`await User.select('*')` or `await User.select('id', 'name', 'password')`
 
-Options are `scope`, `primaryKey`, `foreignKey`, `polymorphic`
+Next thing to do is define relations. Our user has profile (`src/app/profile/model.ts`):
 
-```js
-const {models, belongsTo} = require('pg-adapter')
+```ts
+import model from 'config/model'
+import {UserModel} from 'app/user/model'
 
-models(db, {
-  countries: {},
-  cities: {
-    // options are optional
-    country: belongsTo(),
-    
-    // with options:
-    country: belongsTo({
-      primaryKey: 'id', // id column of other table
-      foreignKey: 'country_id', // column in current table
-      polymorphic: false,
-      scope: (country) => country.where('filter somehow'),
-    }),
-  },
+export const ProfileModel = model('users', class UserEntity {
+  id: number
+  name: string
 })
 
-const city = {country_id: 5}
-const country = await db.city.country(city)
+export const Profile = ProfileModel.relations(({belongsTo}) => ({
+  user: belongsTo((params: {userId}) => UserModel)
+}))
 ```
 
-Polymorphic:
+And user model:
 
-```js
-const {models, belongsTo} = require('pg-adapter')
+```ts
+import {ProfileModel} from 'app/profile/model'
 
-models(db, {
-  pictures: {
-    imageable: belongsTo({polymorphic: true})
-  }
-})
+// ...skip some code from above
 
-const picture = {imageable_id: 1, imageable_type: 'users'}
-const user = await db.pictures.imageable(picture)
+export const User = UserModel.relations(({hasOne}) => ({
+  profile: hasOne((params: {id: number}) => ProfileModel)
+}))
 ```
 
-Don't use polymorphic in cases when it's easy to use several tables instead.
-It is harder to maintain and less efficient for database.
+Additional `UserModel` and `ProfileModel` is needed only to avoid circular dependencies.
 
-#### hasOne
+So `User` use `ProfileModel`, and `Profile` use `UserModel`, no problems with dependencies.
 
-Options are `primaryKey`, `foreignKey`, `through`, `as`, `scope`
+Yes, syntax may seem weird.
+Believe me, I tried to make it in many ways, this syntax won in order to provide as much typescript info as possible for further usage.
 
-```js
-const {models, hasOne} = require('pg-adapter')
+How to get profile of user:
 
-models(db, {
-  profiles: {},
-  users: {
-    // options are optional:
-    profile: hasOne(),
-    
-    // with options:
-    profile: hasOne({
-      primaryKey: 'id', // id column of this table (of users)
-      foreignKey: 'user_id', // column in other table (in profiles)
-      scope: (profile) => profile.where('some condition'),
-    })
-  },
-})
+```ts
+import User from 'app/user/model'
 
-const user = {id: 3}
-const profile = await db.users.profile(user)
-```
+const user = {id: 1}
+const profile = await User.profile(user) // here is where type is used: (params: {id: number}) => ProfileModel
 
-Relation `through`:
+profile.id // OK
 
-```js
-models(db, {
-  accounts: {
-    user: hasOne(),
-    profile: hasOne({
-      through: 'user',
-    })
-  }
-})
+profile.foo // TypeScript error
 
-const account = {id: 7}
-const profile = await db.accounts.profile(account)
-```
-
-Polymorphic relation using `as`:
-
-```js
-const {models, belongsTo, hasOne} = require('porm')
-
-models(db, {
-  pictures: {
-    imageable: belongsTo({polymorphic: true})
-  },
-  employees: {
-    picture: hasOne({as: 'imageable'})
-  },
-  products: {
-    picture: hasOne({as: 'imageable'})
-  }
-})
-
-const employee = {id: 8}
-const employeePicture = await db.employees.picture(employee)
-const product = {id: 2}
-const productPicture = await db.products.picture(product)
-```
-
-#### hasMany
-
-Options are `primaryKey`, `foreignKey`, `through`, `as`, `scope`
-
-```js
-const {models, hasMany} = require('pg-adapter')
-
-models(db, {
-  books: {},
-  authors: {
-    // options are optional:
-    books: hasMany(),
-    
-    // with options:
-    books: hasMany({
-      primaryKey: 'id', // id column of this table (of authors)
-      foreignKey: 'author_id', // column in other table (in books)
-      scope: (books) => books.where('some condition'),
-    })
-  },
-})
-
-const author = {id: 3}
-const books = await db.authors.books(author)
-```
-
-Relation `through`:
-
-```js
-models(db, {
-  physicians: {
-    appointments: hasMany(),
-    patients: hasMany({through: 'appointments'})
-  },
-  appointments: {
-    physician: belongsTo(),
-    patient: belongsTo(),
-  },
-  patients: {
-    appointments: hasMany(),
-    physicians: hasMany({through: 'appointments'})
-  },
-})
-
-const physician = {id: 1}
-const patients = await db.physicians.patients(physician)
-const patient = {id: 2}
-const physicians = await db.patients.physicians(patient)
-```
-
-Polymorphic relation using `as`:
-
-```js
-const {models, belongsTo, hasMany} = require('porm')
-
-models(db, {
-  pictures: {
-    imageable: belongsTo({polymorphic: true})
-  },
-  employees: {
-    pictures: hasMany({as: 'imageable'})
-  },
-  products: {
-    pictures: hasMany({as: 'imageable'})
-  }
-})
-
-const employee = {id: 8}
-const employeePictures = await db.employees.pictures(employee)
-const product = {id: 2}
-const productPictures = await db.products.pictures(product)
-```
-
-#### hasAndBelongsToMany
-
-Options are `joinTable`, `foreignKey`, `associationForeignKey`, `scope`
-
-It is like `hasMeny({through})` but without defining model in between. 
-
-```js
-const {models, hasAndBelongsToMany} = require('pg-adapter')
-
-models(db, {
-  posts: {
-    tags: hasAndBelongsToMany({
-      joinTable: 'posts_tags', // by default is joining table names alphabetically
-      foreignKey: 'post_id', // for record of this table
-      associationForeignKey: 'tag_id', // for record of other table
-      scope: (tags) => tags.where('filter tags'),
-    }),
-  },
-  tags: {
-    posts: hasAndBelongsToMany()
-  }
-})
-
-const post = {id: 10}
-const tags = db.posts.tags(post)
+User.profile({foo: 1}) // TypeScript error
 ```
 
 ## Scopes
 
-Scopes allow to not write same queries again and again:
-
-```js
-const {sql} = require('pg-adapter')
-
-models(db, {
-  samples: {
-    defaultScope: (samples) => samples.where({deleted_at: null}),
-    
-    scopes: {
-      newest: (samples) => samples.order({created_at: 'desc'}),
-      
-      newerThan: (samples, date) =>
-        samples.where(sql`created_at > ${date}`)
-    }
-  }
-})
-```
-
-## Queries
-
-There is `queries` special property in model definition:
-
-```js
-model('users', {
-  queries: (db) => ({
-    findByName: (name) =>
-      db.users.where({name}).take()
-  })
-})
-```
-
-It's similar to [scopes](#scopes)
-except `db` instance present and you can build queries using other models.
-
-It's similar to [prepared](#prepared-statements),
-difference is prepared statements requires argument definition. 
-
-## Query interface
-
-`unscoped()` clears all query info
-
-`all()` initialize query, also discards `take()` method
-
-`take()` gets only one record
-
-`toSql()` returns generated sql query
-
-`find(id)` find one record by given id
-
-`wrap(query, as = 't')` wraps current query into another query:
-
-```js
-const apples = db.apples.select('column', 'created_at')
-const oranges = db.oranges.select('column', 'created_at')
-
-// db.base is a special model without table
-const orderedApplesAndOranges =
-  await db.apples.union(db.oranges).wrap( // inner query
-    db.base.order({created_at: 'desc'}) // outer query
-  )
-
-// will query such sql:
-sql`
-SELECT *
-FROM (
-  SELECT * FROM apples
-  UNION
-  SELECT * FROM oranges
-) t
-ORDER BY created_at desc
-`
-```
-
-`objects()` by default, query will return array of objects
-
-`arrays()` will return array of arrays of values, no keys
-
-`value()` will return single value
-
-`json()` result will be json string, it uses Postgres json aggregations
-
-`then()` executes the query, usually invoked by `await` keyword
-
-`as(string)` alias table name
-
-`distinct(...args)` add `DISTINCT` keyword.
-Arguments the same as in `select`, if provided it gave `DISTINCT ON (...)`
-
-`distinctRaw(sql)` results in `DISTINT ON (sql)` query
-
-`select` and `selectRaw` requires examples:
-
-```js
-db.table.select('column_a', 'column_b')
-// select columns
-
-db.table.select({firstName: 'name'})
-// select name AS firstName
-
-db.table.select({otherTable: db.otherTable.all()})
-// select json result of other query AS otherTable
-
-db.table.selectRaw('raw sql')
-// select as is
-```
-
-`from(source)` changes `FROM` statement
-
-`where` and `and` are same methods:
-
-```js
-const query = db.table
-
-query.where('a').and('b')
-// WHERE a AND b
-
-query.where({column: 'value'})
-// WHERE "someTable"."column" = 'value'
-
-query.where({otherTable: {column: 'value'}})
-// WHERE "table"."column" = 'value'
-
-// it accept queries:
-query.where({a: 1}, query.where({b: 2}).or({c: 3, d: 4}))
-// WHERE "table"."a" = 1 AND ( "table"."b" = 2 OR "table"."c" = 3 AND "table"."d" = 4 )
-```
-
-`or`:
-
-```js
-const query = db.table
-
-query.or('a', 'b')
-// WHERE a OR b
-
-query.or({a: 1}, {b: 2})
-// WHERE "table"."a" = 1 OR "table"."b" = 2
-query.where({a: 1}).or({b: 2})
-// same as above
-
-// it accept queries:
-query.or({a: 1}, query.where({b: 2}).or({c: 3}))
-// WHERE "table"."a" = 1 OR ( "table"."b" = 2 OR "table"."c" = 3 )
-```
-
-`findBy` is same as `where(...).take()`
-
-`group` and `groupRaw` for GROUP BY statement:
-
-```js
-db.table.group('id', 'name')
-// GROUP BY "table"."id", "table"."name"
-
-db.table.groupRaw('id', 'name')
-// GROUP BY id, name
-```
-
-`having` raw sql to `HAVING` statement:
-
-```js
-db.table.having('sum(rating) > 30', 'count(id) > 5')
-// HAVING sum(rating) > 30, count(id) > 5
-```
-
-`window`:
-
-```js
-db.table.window({w: 'PARTITION BY depname ORDER BY salary DESC'})
-// WINDOW w AS (PARTITION BY depname ORDER BY salary DESC)
-```
-
-`union`:
-
-```js
-db.one.union(db.two.all(), db.three.all())
-// gives:
-sql`
-  SELECT * FROM one
-  UNION
-  SELECT * FROM two
-  UNION
-  SELECT * FROM three
-`
-```
-
-`unionAll`, `intersect`, `intersectAll`, `except`, `exceptAll`
-are the same as `union` but with different statements
-
-`order` and `orderRaw`:
-
-```js
-db.table.order('id')
-// ORDER "table"."id"
-
-db.table.order({name: 'desc', age: 'asc nulls first'})
-// ORDER "table"."name" desc, "table"."age" asc nulls first
-
-db.table.order({otherTable: {column: 'desc'}})
-// ORDER "otherTable"."column" desc
-
-db.table.orderRaw('sql')
-// ORDER sql
-```
-
-`offset` sets `OFFSET`
-
-`limit` sets `LIMIT`
-
-`for` something advances, `FOR` statement sets blocking table rules
-
-`join`:
-
-```js
-db.table.join('otherTable', 'alias', 'raw conditions')
-// JOIN "otherTable" AS "alias" ON raw conditions
-
-db.table.join(db.otherTable.as('alias').where({a: 1}))
-// JOIN "otherTable" AS "alias" ON "alias"."a" = 1
-
-// can join related tables
-const {models, belongsTo} = require('porm')
-models(db, {
-  posts: {authors: belongsTo()},
-  authors: {}
-})
-
-db.posts.join('authors')
-// JOIN "authors" ON "authors"."id" = "posts"."author_id"
-```
-
-```js
-module.exports = {
-  join(...args) {
-    return this.clone()._join(...args)
+Scopes are functions to reuse queries.
+
+```ts
+export const Product = model('products').scopes({
+  cheap() {
+    return this.where('price < 100').or('discount > 20')
   },
 
-  _join(...args) {
-    const query = this.toQuery()
-    const q = query.__query
-    if (q.join)
-      q.join.push(args)
-    else
-      q.join = [args]
-    return query
+  fresh() {
+    return this.where(`"createdAt" > now() - '3 days'::interval`)
   },
-}
-```
 
-`exists` cheap check if record exists, it's doing `SELECT 1 FROM table`
-
-## Prepared statements
-
-Build your query and let Postgres to do planning just once, execute it many times!
-
-It will save few milliseconds, maybe for complex queries will save more.
-
-```js
-const prepared = db.samples.where('id = $1 AND name = $2')
-                   .prepare('filterByIdAndName', 'integer', 'text')
-
-const result = await prepared(5, 'some string')
-```
-
-There is special `prepared` property in model definition:
-
-```js
-model('users', {
-  prepared: (db) => ({
-    findById: { // with arguments
-      args: ['integer'],
-      query: db.users.where('id = $1')
-    },
-    // without arguments
-    ordered: db.users.order({created_at: 'desc'})
-  })
+  search(value: string) {
+    value = `%${value}%`
+    return this.where`name ILIKE ${value}`.or`description ILIKE ${value}`
+  },
 })
-
-// execute prepared statements
-console.log(await db.users.findById(5))
-console.log(await db.users.ordered())
 ```
+
+Last example demonstrates using template strings.
+
+With such syntax you can pass arguments from outside, they will be escaped, no worries about SQL injections.
+
+Use scopes:
+
+```ts
+import Product from 'app/product/model'
+
+const products = await Product.cheap().fresh().search('doughnut')
+```
+
+## Docs
+
+Hundreds of features left uncovered, please let me know that you are interested giving a star in repo, and I will write complete docs soon.

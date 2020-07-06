@@ -1,51 +1,51 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+exports.__esModule = true;
 exports.where = void 0;
-const pg_adapter_1 = require("pg-adapter");
-const whereAnd = (table, args) => {
-    const list = [];
-    args.forEach(arg => {
+var pg_adapter_1 = require("pg-adapter");
+var whereAnd = function (table, args) {
+    var list = [];
+    args.forEach(function (arg) {
         if (typeof arg === 'string')
             list.push(arg);
         else if (typeof arg === 'object')
             if (arg.__query) {
-                const value = [];
+                var value = [];
                 if (arg.__query.and)
                     value.push(whereAnd(table, arg.__query.and));
                 if (arg.__query.or)
                     value.push(whereOr(table, arg.__query.or));
-                list.push(`(${value.join(' OR ')})`);
+                list.push("(" + value.join(' OR ') + ")");
             }
             else
-                for (let key in arg) {
-                    const value = arg[key];
+                for (var key in arg) {
+                    var value = arg[key];
                     if (typeof value === 'object')
                         if (value === null)
-                            list.push(`${table}."${key}" IS NULL`);
+                            list.push(table + ".\"" + key + "\" IS NULL");
                         else if (Array.isArray(value))
-                            list.push(`${table}."${key}" IN (${value.map(pg_adapter_1.quote).join(', ')})`);
+                            list.push(table + ".\"" + key + "\" IN (" + value.map(pg_adapter_1.quote).join(', ') + ")");
                         else
-                            for (let column in value)
-                                list.push(`"${key}"."${column}" = ${pg_adapter_1.quote(value[column])}`);
+                            for (var column in value)
+                                list.push("\"" + key + "\".\"" + column + "\" = " + pg_adapter_1.quote(value[column]));
                     else
-                        list.push(`${table}."${key}" = ${pg_adapter_1.quote(value)}`);
+                        list.push(table + ".\"" + key + "\" = " + pg_adapter_1.quote(value));
                 }
     });
     return list.join(' AND ');
 };
-const whereOr = (table, args) => {
-    const list = [];
-    args.forEach(arg => {
+var whereOr = function (table, args) {
+    var list = [];
+    args.forEach(function (arg) {
         if (typeof arg === 'string')
             list.push(arg);
         else if (arg !== null && arg !== undefined && typeof arg === 'object')
             if (arg.__query) {
-                const value = [];
+                var value = [];
                 if (arg.__query.and)
                     value.push(whereAnd(table, arg.__query.and));
                 if (arg.__query.or)
                     value.push(whereOr(table, arg.__query.or));
-                list.push(`(${value.join(' OR ')})`);
+                list.push("(" + value.join(' OR ') + ")");
             }
             else {
                 list.push(whereAnd(table, [arg]));
@@ -53,8 +53,8 @@ const whereOr = (table, args) => {
     });
     return list.join(' OR ');
 };
-exports.where = (table, and, or) => {
-    const andSql = [];
+exports.where = function (table, and, or) {
+    var andSql = [];
     if (and)
         andSql.push(whereAnd(table, and));
     if (or) {

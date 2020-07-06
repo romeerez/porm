@@ -1,6 +1,8 @@
 import { Adapter, Prepared } from "pg-adapter";
 import { Query } from "./query";
 import { BelongsToOptions, HasOptions, HasAndBelongsToManyOptions } from './relations';
+import { aggregateSql, AggregateOptions } from './aggregate';
+import { ColumnDefinition } from "./extraTypes";
 export declare type ModelQuery<Model> = Model & {
     __query: Query;
 };
@@ -24,6 +26,13 @@ export interface Model<Entity> {
     quotedTable: string;
     primaryKey: string;
     quotedPrimaryKey: string;
+    hiddenColumns: string[];
+    createdAtColumnName: string;
+    updatedAtColumnName: string;
+    deletedAtColumnName: string;
+    aggregateSql: typeof aggregateSql;
+    columns(): Promise<Record<string, ColumnDefinition>>;
+    columnNames(): Promise<string[]>;
     create<T extends Partial<Entity>>(records: T, returning?: string | string[]): Entity;
     create<T extends Partial<Entity>>(records: T[], returning?: string | string[]): Entity[];
     updateAll<T>(set: string | Record<string, any>, returning?: string | string[]): Promise<T[]>;
@@ -42,7 +51,7 @@ export interface Model<Entity> {
     scopes<T extends {
         [key: string]: (this: Model<Entity>, ...args: any[]) => Model<Entity>;
     }>(scopes: T): this & T;
-    prepare<T extends Record<string, () => any>>(fn: (prepare: (args: string[], query: Model<any>) => Prepared, model: Model<Entity>) => T): {
+    prepare<T extends Record<string, () => any>>(fn: (prepare: (args: string[], query: Model<any>) => Promise<Prepared>, model: Model<Entity>) => T): {
         [K in keyof T]: ReturnType<T[K]>;
     } & Model<Entity>;
     then: Then<Entity[]>;
@@ -76,7 +85,7 @@ export interface Model<Entity> {
     _exec(): Omit<this, 'then'> & {
         then: Then<void>;
     };
-    toSql(): string;
+    toSql(): Promise<string>;
     toQuery(): ModelQuery<this>;
     clone(): ModelQuery<this>;
     merge(...args: ModelQuery<any>[]): ModelQuery<this>;
@@ -89,8 +98,10 @@ export interface Model<Entity> {
     _select(...args: any[]): ModelQuery<this>;
     selectRaw(...args: any[]): ModelQuery<this>;
     _selectRaw(...args: any[]): ModelQuery<this>;
-    from(source: string): ModelQuery<this>;
-    _from(source: string): ModelQuery<this>;
+    include(...args: any[]): ModelQuery<this>;
+    _include(...args: any[]): ModelQuery<this>;
+    from(source: string | Promise<string>): ModelQuery<this>;
+    _from(source: string | Promise<string>): ModelQuery<this>;
     as(as: string): ModelQuery<this>;
     _as(as: string): ModelQuery<this>;
     wrap(query: Model<any>, as?: string): ModelQuery<this>;
@@ -145,6 +156,60 @@ export interface Model<Entity> {
     _exists(): Omit<this, 'then'> & {
         then: Then<boolean>;
     };
+    count(args?: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    _count(args?: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    avg(args: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    _avg(args: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    min(args: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    _min(args: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    max(args: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    _max(args: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    sum(args: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    _sum(args: string, options?: AggregateOptions): Omit<this, 'then'> & {
+        then: Then<boolean>;
+    };
+    first(): Omit<this, 'then'> & {
+        then: Then<Entity>;
+    };
+    _first(): Omit<this, 'then'> & {
+        then: Then<Entity>;
+    };
+    first(limit: number): Omit<this, 'then'> & {
+        then: Then<Entity[]>;
+    };
+    _first(limit: number): Omit<this, 'then'> & {
+        then: Then<Entity[]>;
+    };
+    last(): Omit<this, 'then'> & {
+        then: Then<Entity>;
+    };
+    _last(): Omit<this, 'then'> & {
+        then: Then<Entity>;
+    };
+    last(limit: number): Omit<this, 'then'> & {
+        then: Then<Entity[]>;
+    };
+    _last(limit: number): Omit<this, 'then'> & {
+        then: Then<Entity[]>;
+    };
 }
 export interface Config {
     camelCase?: boolean;
@@ -152,7 +217,11 @@ export interface Config {
 export interface Options {
     primaryKey?: string;
 }
-declare const porm: (db: Adapter, { camelCase }?: {
-    camelCase?: boolean | undefined;
-}) => <Entity>(table: string, klass: new (...args: any) => Entity, options?: Options) => Model<Entity>;
+declare const porm: {
+    (db: Adapter, { camelCase }?: {
+        camelCase?: boolean | undefined;
+    }): <Entity>(table: string, klass: new (...args: any) => Entity, options?: Options) => Model<Entity>;
+    hidden({ constructor: target }: any, key: string): void;
+    transaction: <T extends Record<string, Model<any>>>(models: T, fn: (models: T) => Promise<any>) => Promise<any[]>;
+};
 export default porm;

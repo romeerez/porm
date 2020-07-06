@@ -1,5 +1,5 @@
 import { Adapter } from 'pg-adapter';
-declare const _default: Adapter & {
+declare const db: Adapter & {
     prepareQuery: (...args: any) => any;
 };
-export default _default;
+export default db;

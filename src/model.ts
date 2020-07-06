@@ -1,5 +1,7 @@
 import {Adapter, Prepared} from "pg-adapter"
-import {Query, toQuery, createQuery, merge, setNumber, setString, setBoolean, pushArrayAny} from "./query"
+import {
+  Query, toQuery, createQuery, merge, setNumber, setString, setStringOrPromise, setBoolean, pushArrayAny
+} from "./query"
 import {toSql} from "./sql"
 import {create} from './create'
 import {update} from './update'
@@ -9,6 +11,10 @@ import {
   hasOne, hasMany, HasOptions,
   hasAndBelongsToMany, HasAndBelongsToManyOptions
 } from './relations'
+import {transaction} from './transaction'
+import {aggregateSql, AggregateOptions} from './aggregate'
+import {join} from './utils'
+import {ColumnDefinition} from "./extraTypes"
 
 export type ModelQuery<Model> = Model & {
   __query: Query
@@ -52,6 +58,15 @@ export interface Model<Entity> {
   quotedTable: string
   primaryKey: string
   quotedPrimaryKey: string
+  hiddenColumns: string[]
+  createdAtColumnName: string
+  updatedAtColumnName: string
+  deletedAtColumnName: string
+
+  aggregateSql: typeof aggregateSql
+
+  columns(): Promise<Record<string, ColumnDefinition>>
+  columnNames(): Promise<string[]>
 
   create<T extends Partial<Entity>>(records: T, returning?: string | string[]): Entity
   create<T extends Partial<Entity>>(records: T[], returning?: string | string[]): Entity[]
@@ -86,7 +101,7 @@ export interface Model<Entity> {
   prepare<T extends Record<string, () => any>>
     (
       fn: (
-        prepare: (args: string[], query: Model<any>) => Prepared,
+        prepare: (args: string[], query: Model<any>) => Promise<Prepared>,
         model: Model<Entity>
       ) => T
     ): {[K in keyof T]: ReturnType<T[K]>} & Model<Entity>
@@ -102,7 +117,7 @@ export interface Model<Entity> {
   _value(): Omit<this, 'then'> & {then: Then<any>}
   exec(): Omit<this, 'then'> & {then: Then<void>}
   _exec(): Omit<this, 'then'> & {then: Then<void>}
-  toSql(): string
+  toSql(): Promise<string>
   toQuery(): ModelQuery<this>
   clone(): ModelQuery<this>
   merge(...args: ModelQuery<any>[]): ModelQuery<this>
@@ -115,8 +130,10 @@ export interface Model<Entity> {
   _select(...args: any[]): ModelQuery<this>
   selectRaw(...args: any[]): ModelQuery<this>
   _selectRaw(...args: any[]): ModelQuery<this>
-  from(source: string): ModelQuery<this>
-  _from(source: string): ModelQuery<this>
+  include(...args: any[]): ModelQuery<this>
+  _include(...args: any[]): ModelQuery<this>
+  from(source: string | Promise<string>): ModelQuery<this>
+  _from(source: string | Promise<string>): ModelQuery<this>
   as(as: string): ModelQuery<this>
   _as(as: string): ModelQuery<this>
   wrap(query: Model<any>, as?: string): ModelQuery<this>
@@ -167,6 +184,24 @@ export interface Model<Entity> {
   _for(value: string): ModelQuery<this>
   exists(): Omit<this, 'then'> & {then: Then<boolean>}
   _exists(): Omit<this, 'then'> & {then: Then<boolean>}
+  count(args?: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  _count(args?: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  avg(args: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  _avg(args: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  min(args: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  _min(args: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  max(args: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  _max(args: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  sum(args: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  _sum(args: string, options?: AggregateOptions): Omit<this, 'then'> & {then: Then<boolean>}
+  first(): Omit<this, 'then'> & {then: Then<Entity>}
+  _first(): Omit<this, 'then'> & {then: Then<Entity>}
+  first(limit: number): Omit<this, 'then'> & {then: Then<Entity[]>}
+  _first(limit: number): Omit<this, 'then'> & {then: Then<Entity[]>}
+  last(): Omit<this, 'then'> & {then: Then<Entity>}
+  _last(): Omit<this, 'then'> & {then: Then<Entity>}
+  last(limit: number): Omit<this, 'then'> & {then: Then<Entity[]>}
+  _last(limit: number): Omit<this, 'then'> & {then: Then<Entity[]>}
 }
 
 export interface Config {
@@ -179,14 +214,39 @@ export interface Options {
 
 const porm = (db: Adapter, {camelCase = true} = {}) =>
   <Entity>(table: string, klass: new (...args: any) => Entity, options: Options = {}) => {
+    const config = {camelCase}
+
     const self = {
-      model: null as any,
-      config: {camelCase},
       db,
       table,
+      config,
+      aggregateSql,
+
+      model: null as any,
       quotedTable: `"${table}"`,
       primaryKey: options.primaryKey || 'id',
       quotedPrimaryKey: `"${options.primaryKey || 'id'}"`,
+      hiddenColumns: (klass as any).hiddenColumns || [],
+      createdAtColumnName: join({config}, 'created', 'at'),
+      updatedAtColumnName: join({config}, 'updated', 'at'),
+      deletedAtColumnName: join({config}, 'deleted', 'at'),
+
+      columns() {
+        if ((this.model as any).columnsPromise)
+          return (this.model as any).columnsPromise
+
+        return (this.model as any).columnsPromise = new Promise(async resolve => {
+          const columns: Record<string, ColumnDefinition> = {}
+          const array = await db.query
+            `SELECT * FROM information_schema.columns WHERE table_name = ${table}` as ColumnDefinition[]
+          array.forEach(column => columns[column.column_name] = column)
+          resolve(columns)
+        })
+      },
+
+      async columnNames() {
+        return Object.keys(await this.columns())
+      },
 
       create(records: any, returning: any) {
         return create(this, records, returning) as any
@@ -205,7 +265,7 @@ const porm = (db: Adapter, {camelCase = true} = {}) =>
       },
 
       update(id, set, returning) {
-        return update(findByIdParameter(this, id), set, returning)
+        return update(findByIdParameter(this, id), set, returning, typeof id === 'object' && id)
       },
 
       setDefaultScope(scope) {
@@ -240,8 +300,9 @@ const porm = (db: Adapter, {camelCase = true} = {}) =>
 
       prepare(fn) {
         let key: string
-        const preparer = (args: string[], query: Model<any>) => {
-          return this.db.prepare(`${this.table}_${key}`, ...args)([query.toSql()] as any)
+        const preparer = async (args: string[], query: Model<any>) => {
+          const sql = await query.toSql()
+          return this.db.prepare(`${this.table}_${key}`, ...args)([sql] as any)
         }
         const prepared = fn(preparer, this)
         for (key in prepared)
@@ -367,12 +428,20 @@ const porm = (db: Adapter, {camelCase = true} = {}) =>
         return pushArrayAny(this, 'selectRaw', args)
       },
 
+      include(...args) {
+        return this.clone()._include(...args)
+      },
+
+      _include(...args) {
+        return pushArrayAny(this, 'include', args)
+      },
+
       from(source) {
         return this.clone()._from(source)
       },
 
       _from(source) {
-        return setString(this, 'from', source)
+        return setStringOrPromise(this, 'from', source)
       },
 
       as(as) {
@@ -388,7 +457,9 @@ const porm = (db: Adapter, {camelCase = true} = {}) =>
       },
 
       _wrap(query, as = 't') {
-        return query._as(as)._from(`(${this.toQuery().toSql()})`)
+        return query._as(as)._from(new Promise(async resolve => {
+          resolve(`(${await this.toQuery().toSql()})`)
+        }))
       },
 
       json() {
@@ -586,8 +657,67 @@ const porm = (db: Adapter, {camelCase = true} = {}) =>
       },
 
       _exists() {
-        setBoolean(this._value(), 'exists', true)
-        return this as any
+        return this._selectRaw('1').value()
+      },
+
+      count(args, options) {
+        return this.clone()._count(args, options)
+      },
+
+      _count(args = '*', options) {
+        return this._selectRaw(this.aggregateSql('count', args, options))._value()
+      },
+
+      avg(args, options) {
+        return this.clone()._avg(args, options)
+      },
+
+      _avg(args, options) {
+        return this._selectRaw(this.aggregateSql('avg', args, options))._value()
+      },
+
+      min(args, options) {
+        return this.clone()._min(args, options)
+      },
+
+      _min(args, options) {
+        return this._selectRaw(this.aggregateSql('min', args, options))._value()
+      },
+
+      max(args, options) {
+        return this.clone()._max(args, options)
+      },
+
+      _max(args, options) {
+        return this._selectRaw(this.aggregateSql('max', args, options))._value()
+      },
+
+      sum(args, options) {
+        return this.clone()._sum(args, options)
+      },
+
+      _sum(args, options) {
+        return this._selectRaw(this.aggregateSql('sum', args, options))._value()
+      },
+
+      first(limit?: number) {
+        return (this.clone() as any)._first(limit)
+      },
+
+      _first(limit?: number) {
+        if (limit)
+          return this.order(this.primaryKey).limit(limit).all()
+        return this.order(this.primaryKey).take()
+      },
+
+      last(limit?: number) {
+        return (this.clone() as any)._last(limit)
+      },
+
+      _last(limit?: number) {
+        if (limit)
+          return this.order({[this.primaryKey]: 'DESC'}).limit(limit).all()
+        return this.order({[this.primaryKey]: 'DESC'}).take()
       },
     } as Model<Entity>
 
@@ -631,9 +761,11 @@ const porm = (db: Adapter, {camelCase = true} = {}) =>
   }
 
 
-// porm.hidden = ({constructor: target}: any, key: string) => {
-//   if (!target.hiddenColumns) target.hiddenColumns = []
-//   target.hiddenColumns.push(key)
-// }
+porm.hidden = ({constructor: target}: any, key: string) => {
+  if (!target.hiddenColumns) target.hiddenColumns = []
+  target.hiddenColumns.push(key)
+}
+
+porm.transaction = transaction
 
 export default porm

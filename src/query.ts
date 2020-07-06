@@ -1,4 +1,5 @@
-export interface Query extends QueryDataArrayAny, QueryDataString, QueryDataNumber, QueryDataBoolean {}
+export interface Query
+  extends QueryDataArrayAny, QueryDataString, QueryDataStringOrPromise, QueryDataNumber, QueryDataBoolean {}
 
 export interface QueryDataArrayAny {
   and?: any[]
@@ -7,6 +8,7 @@ export interface QueryDataArrayAny {
   distinctRaw?: any[]
   select?: any[]
   selectRaw?: any[]
+  include?: any[]
   group?: any[]
   groupRaw?: any[]
   having?: any[]
@@ -24,9 +26,12 @@ export interface QueryDataArrayAny {
 }
 
 export interface QueryDataString {
-  from?: string
   as?: string
   for?: string
+}
+
+export interface QueryDataStringOrPromise {
+  from?: string | Promise<string>
 }
 
 export interface QueryDataNumber {
@@ -36,7 +41,6 @@ export interface QueryDataNumber {
 
 export interface QueryDataBoolean {
   take?: boolean
-  exists?: boolean
 }
 
 export const createQuery = <T extends object>(model: T, prev?: any) => {
@@ -80,6 +84,14 @@ export const setNumber = <T extends {__query: Query}>(model: {toQuery: () => T},
 }
 
 export const setString = <T extends {__query: Query}>(model: {toQuery: () => T}, key: keyof QueryDataString, value: string) => {
+  const query = model.toQuery()
+  query.__query[key] = value
+  return query
+}
+
+export const setStringOrPromise = <T extends {__query: Query}>(
+  model: {toQuery: () => T}, key: keyof QueryDataStringOrPromise, value: string | Promise<string>
+) => {
   const query = model.toQuery()
   query.__query[key] = value
   return query

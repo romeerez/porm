@@ -1,34 +1,34 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+exports.__esModule = true;
 exports.join = void 0;
-const where_1 = require("./where");
-const joinSql = (args) => {
-    const sql = [`"${args[0]}"`];
-    let cond;
+var where_1 = require("./where");
+var joinSql = function (args) {
+    var sql = ["\"" + args[0] + "\""];
+    var cond;
     if (args.length === 3) {
-        sql.push('AS', `"${args[1]}"`);
+        sql.push('AS', "\"" + args[1] + "\"");
         cond = args[2];
     }
     else
         cond = args[1];
     sql.push('ON', cond);
-    return `JOIN ${sql.join(' ')}`;
+    return "JOIN " + sql.join(' ');
 };
-const joinAssociation = (model, as, name) => {
+var joinAssociation = function (model, as, name) {
     if (!model[name] || !model[name].subquery)
-        throw new Error(`can not join ${name} to ${model.table}`);
+        throw new Error("can not join " + name + " to " + model.table);
     return [model[name].subquery(as)];
 };
-const joinQuery = (sql, _, as, query) => {
-    const q = query.__query;
-    const { model } = query;
+var joinQuery = function (sql, _, as, query) {
+    var q = query.__query;
+    var model = query.model;
     if (q.join)
-        q.join.forEach((args) => {
+        q.join.forEach(function (args) {
             exports.join(sql, model, as, args);
         });
-    let cond;
+    var cond;
     if (q.as)
-        cond = where_1.where(`"${q.as}"`, q.and, q.or);
+        cond = where_1.where("\"" + q.as + "\"", q.and, q.or);
     else
         cond = where_1.where(model.quotedTable, q.and, q.or);
     if (!cond)
@@ -38,7 +38,7 @@ const joinQuery = (sql, _, as, query) => {
     else
         return [model.table, cond];
 };
-exports.join = (sql, model, as, args) => {
+exports.join = function (sql, model, as, args) {
     if (args.length === 1) {
         if (typeof args[0] === 'string')
             args = joinAssociation(model, as, args[0]);

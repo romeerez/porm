@@ -20,11 +20,11 @@ export const belongsTo = <T extends Model<any>, P>(self: any, fn: (params: P) =>
     return model.and({[pk]: id}).take()
   }
 
-  const subquery = (as = self.table) =>
-    model.and(`${model.quotedTable}."${pk}" = "${as}"."${fk}"`)
+  const subquery = (as = self.table, scope: T = model) =>
+    scope.and(`"${scope.__query?.as || model.table}"."${pk}" = "${as}"."${fk}"`)
 
-  query.json = () =>
-    subquery().take().json()
+  query.json = (as = self.table, scope: T = model) =>
+    subquery(as, scope).take().json()
 
   query.subquery = subquery
   query.sourceModel = model
@@ -36,10 +36,12 @@ export const hasThrough = <T, P>(self: Model<any>, model: T, joinQuery: any, sou
     (params: P) => sourceQuery.subquery().join(joinQuery(params)).merge(model) :
     (params: P) => sourceQuery.subquery().join(joinQuery(params)).merge(model).take()
 
-  const subquery = () =>
-    sourceQuery.subquery().join(joinQuery.subquery()).merge(model)
+  const subquery = (as?: string, scope?: any) =>
+    sourceQuery.subquery(undefined, scope).join(joinQuery.subquery(as)).merge(model)
 
-  query.json = many ? () => subquery().json() : () => subquery().take().json()
+  query.json = many
+    ? (as?: string, scope = sourceQuery) => subquery(as, scope).json()
+    : (as?: string, scope = sourceQuery) => subquery(as, scope).take().json()
 
   query.subquery = subquery
   query.sourceModel = model
@@ -71,21 +73,24 @@ export const has = <T extends Model<any>, P>
   }
 
   const pk = primaryKey || self.primaryKey
-  const fk = `${model.quotedTable}."${join(self, foreignKey || singular(self.table), pk)}"`
+  const fk = join(self, foreignKey || singular(self.table), pk)
+  const tfk = `${model.quotedTable}."${fk}"`
 
   const query: any = many ?
     (params: P) => {
       const id = (params as any)[pk]
-      return model.and(`${fk} = ${quote(id)}`)
+      return model.and(`${tfk} = ${quote(id)}`)
     } : (params: P) => {
       const id = (params as any)[pk]
-      return model.and(`${fk} = ${quote(id)}`).take()
+      return model.and(`${tfk} = ${quote(id)}`).take()
     }
 
-  const subquery = (as = self.table) =>
-    model.and(`${fk} = "${as}"."${pk}"`)
+  const subquery = (as = self.table, scope: T = model) =>
+    scope.and(`"${scope.__query?.as || model.table}"."${fk}" = "${as}"."${pk}"`)
 
-  query.json = many ? () => subquery().json() : () => subquery().take().json()
+  query.json = many
+    ? (as = self.table, scope?: T) => subquery(as, scope).json()
+    : (as = self.table, scope?: T) => subquery(as, scope).take().json()
 
   query.subquery = subquery
   query.sourceModel = model
@@ -118,7 +123,7 @@ export const hasAndBelongsToMany = <T extends Model<any>, P>(
   const sourceModel = fn(null as any)
   const jt = joinTable || join(self, ...[self.table, sourceModel.table].sort())
 
-  const joinModel = porm(self.db, self.config)(jt)
+  const joinModel = porm(self.db, self.config)(jt, class {})
 
   const joinQuery = hasMany(self, (params: P) => joinModel, {primaryKey, foreignKey})(name)
 

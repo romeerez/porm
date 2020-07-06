@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const prepareQuery = jest.fn();
-exports.default = {
+const db = {
     objects: jest.fn(() => ({ then: (resolve) => resolve() })),
     query: jest.fn(() => ({ then: (resolve) => resolve() })),
     arrays: jest.fn(() => ({ then: (resolve) => resolve() })),
@@ -11,4 +11,11 @@ exports.default = {
         query: prepareQuery
     })),
     prepareQuery,
+    transaction: jest.fn(async (fn) => {
+        db.exec('BEGIN');
+        const transaction = Object.create(db);
+        await fn(db);
+        db.exec('COMMIT');
+    })
 };
+exports.default = db;

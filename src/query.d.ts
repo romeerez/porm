@@ -1,4 +1,4 @@
-export interface Query extends QueryDataArrayAny, QueryDataString, QueryDataNumber, QueryDataBoolean {
+export interface Query extends QueryDataArrayAny, QueryDataString, QueryDataStringOrPromise, QueryDataNumber, QueryDataBoolean {
 }
 export interface QueryDataArrayAny {
     and?: any[];
@@ -7,6 +7,7 @@ export interface QueryDataArrayAny {
     distinctRaw?: any[];
     select?: any[];
     selectRaw?: any[];
+    include?: any[];
     group?: any[];
     groupRaw?: any[];
     having?: any[];
@@ -23,9 +24,11 @@ export interface QueryDataArrayAny {
     prepareArguments?: any[];
 }
 export interface QueryDataString {
-    from?: string;
     as?: string;
     for?: string;
+}
+export interface QueryDataStringOrPromise {
+    from?: string | Promise<string>;
 }
 export interface QueryDataNumber {
     limit?: number;
@@ -33,7 +36,6 @@ export interface QueryDataNumber {
 }
 export interface QueryDataBoolean {
     take?: boolean;
-    exists?: boolean;
 }
 export declare const createQuery: <T extends object>(model: T, prev?: any) => T & {
     model: T;
@@ -61,6 +63,11 @@ export declare const setString: <T extends {
 }>(model: {
     toQuery: () => T;
 }, key: keyof QueryDataString, value: string) => T;
+export declare const setStringOrPromise: <T extends {
+    __query: Query;
+}>(model: {
+    toQuery: () => T;
+}, key: keyof QueryDataStringOrPromise, value: string | Promise<string>) => T;
 export declare const setBoolean: <T extends {
     __query: Query;
 }>(model: {

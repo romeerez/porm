@@ -1,11 +1,11 @@
 import {Model} from '../model'
 
-const selectObject = (
+const selectObject = async (
   model: Model<any>, list: string[], table: string, arg: any, raw?: boolean, as?: string
 ) => {
   if (arg.__subquery || arg.toQuery) {
     const query = arg.toQuery()
-    const sql = query.__query.type ? query.toSql() : query.json().toSql()
+    const sql = await (query.__query.type ? query.toSql() : query.json().toSql())
     list.push(`(${sql}) AS "${as || query.__query.as || query.model.table}"`)
     return
   }
@@ -16,7 +16,7 @@ const selectObject = (
       if (value.__subquery || value.__query) {
         if (!value.__query || !value.__query.type)
           value = value.json()
-        list.push(`(${value.toSql()}) AS "${key}"`)
+        list.push(`(${await value.toSql()}) AS "${key}"`)
       } else {
         for (let as in value)
           list.push(`"${key}"."${value[as]}" AS "${as}"`)
@@ -28,29 +28,33 @@ const selectObject = (
   }
 }
 
-const selectString = (
+const selectString = async (
   model: Model<any>, list: string[], table: string, arg: string, raw?: boolean
 ) => {
   if (raw)
     return list.push(arg)
-  else if (arg === undefined && arg === null && arg === false)
+  else if (arg === undefined || arg === null || (arg as any) === false)
     return
 
   if ((model as any)[arg] && (model as any)[arg].__subquery)
-    selectObject(model, list, table, (model as any)[arg], raw, arg)
+    await selectObject(model, list, table, (model as any)[arg], raw, arg)
   else if (arg === '*')
     list.push(`${table}.*`)
   else
     list.push(`${table}."${arg}"`)
 }
 
-export const select = (model: Model<any>, table: string, args: any[], raw?: boolean) => {
-  const list: string[] = []
-  args.forEach(arg => {
-    if (arg.__subquery || typeof arg === 'object')
-      selectObject(model, list, table, arg, raw)
-    else
-      selectString(model, list, table, arg, raw)
-  })
-  return list.join(', ')
+const selectArgument = async (list: string[], model: Model<any>, table: string, arg: any, raw?: boolean) => {
+  if (Array.isArray(arg))
+    arg.forEach(item => selectArgument(list, model, table, item, raw))
+  else if (arg.__subquery || typeof arg === 'object')
+    await selectObject(model, list, table, arg, raw)
+  else
+    await selectString(model, list, table, arg, raw)
+}
+
+export const select = async (list: string[], model: Model<any>, table: string, args: any[], raw?: boolean) => {
+  await Promise.all(
+    args.map(arg => selectArgument(list, model, table, arg, raw))
+  )
 }

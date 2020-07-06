@@ -7,8 +7,8 @@ export declare const belongsTo: <T extends Model<any>, P>(self: any, fn: (params
     (params: P): Pick<T, Exclude<keyof T, "then">> & {
         then: import("./model").Then<any>;
     };
-    json(): import("./model").ModelQuery<Model<any>>;
-    subquery: (as?: any) => import("./model").ModelQuery<T>;
+    json(as?: any, scope?: T): import("./model").ModelQuery<Model<any>>;
+    subquery: (as?: any, scope?: T) => import("./model").ModelQuery<T>;
     sourceModel: import("./model").ModelQuery<T>;
 };
 export declare const hasThrough: <T, P>(self: Model<any>, model: T, joinQuery: any, sourceQuery: any, many: boolean) => any;

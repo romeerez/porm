@@ -140,7 +140,7 @@ describe('hasThrough', () => {
 
 
     describe(`${one ? 'hasOne' : 'hasMany'} through hasHasAndBelongsToMany`, () => {
-      const Chat = model('chats', class {}).relations(({hasAndBelongsToMany, hasOne, hasMany}) => ({
+      const Chat = model('chats', class {id: number}).relations(({hasAndBelongsToMany, hasOne, hasMany}) => ({
         users: hasAndBelongsToMany((params: {id: number}) => User),
         country: (one ? hasOne as any : hasMany as any)((params: {userId: number}) => Country.active(), {through: 'users'})
       }))

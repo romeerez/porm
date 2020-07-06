@@ -16,14 +16,14 @@ export const User = model('users', class {id: number}).relations(({hasOne}) => (
 }))
 
 describe('hasOne', () => {
-  it('makes proper query', () => {
+  it('makes proper query', async () => {
     const user = {id: 5}
-    expect(User.profile(user).toSql()).toBe(line(`
+    expect(await User.profile(user).toSql()).toBe(line(`
       SELECT "profiles".* FROM "profiles"
       WHERE "profiles"."userId" = ${user.id}
       LIMIT 1
     `))
-    expect(User.profileWithScope(user).toSql()).toBe(line(`
+    expect(await User.profileWithScope(user).toSql()).toBe(line(`
       SELECT "profiles".* FROM "profiles"
       WHERE "profiles"."active" = true
         AND "profiles"."userId" = ${user.id}
@@ -31,14 +31,14 @@ describe('hasOne', () => {
     `))
   })
 
-  it('can be joined', () => {
+  it('can be joined', async () => {
     const q = User.all()
-    expect(q.join('profile').toSql()).toBe(line(`
+    expect(await q.join('profile').toSql()).toBe(line(`
       SELECT "users".* FROM "users"
       JOIN "profiles"
         ON "profiles"."userId" = "users"."id"
     `))
-    expect(q.join('profileWithScope').toSql()).toBe(line(`
+    expect(await q.join('profileWithScope').toSql()).toBe(line(`
       SELECT "users".* FROM "users"
       JOIN "profiles"
         ON "profiles"."active" = true
@@ -46,8 +46,8 @@ describe('hasOne', () => {
     `))
   })
 
-  it('has json subquery', () => {
-    expect(User.profile.json().toSql()).toBe(line(`
+  it('has json subquery', async () => {
+    expect(await User.profile.json().toSql()).toBe(line(`
       SELECT COALESCE(row_to_json("t".*), '{}') AS json
       FROM (
         SELECT "profiles".* FROM "profiles"
@@ -55,7 +55,7 @@ describe('hasOne', () => {
         LIMIT 1
       ) "t"
     `))
-    expect(User.profileWithScope.json().toSql()).toBe(line(`
+    expect(await User.profileWithScope.json().toSql()).toBe(line(`
       SELECT COALESCE(row_to_json("t".*), '{}') AS json
       FROM (
         SELECT "profiles".* FROM "profiles"

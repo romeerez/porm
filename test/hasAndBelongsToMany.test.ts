@@ -16,15 +16,15 @@ const User = model('users', class {}).relations(({hasAndBelongsToMany}) => ({
 }))
 
 describe('hasAndBelongsToMany', () => {
-  it('makes proper query', () => {
+  it('makes proper query', async () => {
     const user = {id: 5}
-    expect(User.chats(user).toSql()).toBe(line(`
+    expect(await User.chats(user).toSql()).toBe(line(`
       SELECT "chats".* FROM "chats"
       JOIN "chatsUsers"
         ON "chatsUsers"."userId" = 5
       WHERE "chats"."id" = "chatsUsers"."chatId"
     `))
-    expect(User.chatsWithScope(user).toSql()).toBe(line(`
+    expect(await User.chatsWithScope(user).toSql()).toBe(line(`
       SELECT "chats".* FROM "chats"
       JOIN "chatsUsers"
         ON "chatsUsers"."userId" = 5
@@ -33,15 +33,15 @@ describe('hasAndBelongsToMany', () => {
     `))
   })
 
-  it('can be joined', () => {
+  it('can be joined', async () => {
     const q = User.all()
-    expect(q.join('chats').toSql()).toBe(line(`
+    expect(await q.join('chats').toSql()).toBe(line(`
       SELECT "users".* FROM "users"
         JOIN "chatsUsers"
           ON "chatsUsers"."userId" = "users"."id"
         JOIN "chats" ON "chats"."id" = "chatsUsers"."chatId"
     `))
-    expect(q.join('chatsWithScope').toSql()).toBe(line(`
+    expect(await q.join('chatsWithScope').toSql()).toBe(line(`
       SELECT "users".* FROM "users"
         JOIN "chatsUsers"
           ON "chatsUsers"."userId" = "users"."id"
@@ -51,8 +51,8 @@ describe('hasAndBelongsToMany', () => {
     `))
   })
 
-  it('has json subquery', () => {
-    expect(User.chats.json().toSql()).toBe(line(`
+  it('has json subquery', async () => {
+    expect(await User.chats.json().toSql()).toBe(line(`
       SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
       FROM (
         SELECT "chats".* FROM "chats"
@@ -61,7 +61,7 @@ describe('hasAndBelongsToMany', () => {
         WHERE "chats"."id" = "chatsUsers"."chatId"
       ) "t"
     `))
-    expect(User.chatsWithScope.json().toSql()).toBe(line(`
+    expect(await User.chatsWithScope.json().toSql()).toBe(line(`
       SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
       FROM (
         SELECT "chats".* FROM "chats"

@@ -19,36 +19,36 @@ const Message = model('messages', Entity).relations(({ belongsTo }) => ({
     chatWithScope: belongsTo((params) => Chat.active())
 }));
 describe('belongsTo', () => {
-    it('makes proper query', () => {
+    it('makes proper query', async () => {
         const message = { chatId: 5 };
-        expect(Message.chat(message).toSql()).toBe(utils_1.line(`
+        expect(await Message.chat(message).toSql()).toBe(utils_1.line(`
       SELECT "chats".* FROM "chats"
       WHERE "chats"."id" = ${message.chatId}
       LIMIT 1
     `));
-        expect(Message.chatWithScope(message).toSql()).toBe(utils_1.line(`
+        expect(await Message.chatWithScope(message).toSql()).toBe(utils_1.line(`
       SELECT "chats".* FROM "chats"
       WHERE "chats"."active" = true
         AND "chats"."id" = ${message.chatId}
       LIMIT 1
     `));
     });
-    it('can be joined', () => {
+    it('can be joined', async () => {
         const q = Message.all();
-        expect(q.join('chat').toSql()).toBe(utils_1.line(`
+        expect(await q.join('chat').toSql()).toBe(utils_1.line(`
       SELECT "messages".* FROM "messages"
       JOIN "chats"
         ON "chats"."id" = "messages"."chatId"
     `));
-        expect(q.join('chatWithScope').toSql()).toBe(utils_1.line(`
+        expect(await q.join('chatWithScope').toSql()).toBe(utils_1.line(`
       SELECT "messages".* FROM "messages"
       JOIN "chats"
         ON "chats"."active" = true
        AND "chats"."id" = "messages"."chatId"
     `));
     });
-    it('has json subquery', () => {
-        expect(Message.chat.json().toSql()).toBe(utils_1.line(`
+    it('has json subquery', async () => {
+        expect(await Message.chat.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(row_to_json("t".*), '{}') AS json
       FROM (
         SELECT "chats".* FROM "chats"
@@ -56,7 +56,7 @@ describe('belongsTo', () => {
         LIMIT 1
       ) "t"
     `));
-        expect(Message.chatWithScope.json().toSql()).toBe(utils_1.line(`
+        expect(await Message.chatWithScope.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(row_to_json("t".*), '{}') AS json
       FROM (
         SELECT "chats".* FROM "chats"

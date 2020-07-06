@@ -5,56 +5,63 @@ import {join} from './join'
 import {where} from './where'
 import {group} from './group'
 import {having} from './having'
+import {include} from './include'
 import {window} from './window'
 import {union} from './union'
 import {order} from './order'
 
-export const toSql = ({model, __query: query}: {model: Model<any>, __query: Query}) => {
+export const toSql = async ({model, __query: query}: {model: Model<any>, __query: Query}) => {
   const sql: string[] = ['SELECT']
 
-  const table = query.as ? `"${query.as}"` : model.quotedTable
+  const as = query.as || model.table
+  const quotedAs = `"${as}"`
 
-  if (query.exists)
-    sql.push('1')
-  else {
-    let distinct, distinctRaw
-    if (query.distinct)
-      distinct = select(model, table, query.distinct, false)
-    if (query.distinctRaw)
-      distinctRaw = select(model, table, query.distinctRaw, true)
-    if (query.distinct || query.distinctRaw) {
-      sql.push('DISTINCT')
-      if (distinct || distinctRaw) {
-        let both = distinct
-        if (distinctRaw)
-          both = both ? `${both}, ${distinctRaw}` : distinctRaw
-        sql.push('ON', `(${both})`)
-      }
-    }
-
-    if (query.select)
-      sql.push(select(model, table, query.select, false))
-    else if (query.selectRaw)
-      sql.push(select(model, table, query.selectRaw, true))
-    else
-      sql.push(`${table}.*`)
+  const distinctList: string[] = []
+  if (query.distinct)
+    await select(distinctList, model, quotedAs, query.distinct, false)
+  if (query.distinctRaw)
+    await select(distinctList, model, quotedAs, query.distinctRaw, true)
+  if (query.distinct || query.distinctRaw) {
+    sql.push('DISTINCT')
+    if (distinctList.length)
+      sql.push('ON', `(${distinctList.join(', ')})`)
   }
 
-  sql.push('FROM', query.from || model.quotedTable)
+  if (!query.select && !query.selectRaw && model.hiddenColumns.length) {
+    const hidden = model.hiddenColumns
+    query.select = (await model.columnNames()).filter(column =>
+      !hidden.includes(column)
+    )
+  }
+
+  let selectList: string[] = []
+  if (query.select)
+    await select(selectList, model, quotedAs, query.select, false)
+  else if (query.selectRaw)
+    await select(selectList, model, quotedAs, query.selectRaw, true)
+  else
+    selectList.push(`${quotedAs}.*`)
+
+  if (query.include)
+    await include(selectList, model, as, query.include)
+
+  sql.push(selectList.join(', '))
+
+  sql.push('FROM', query.from ? await query.from : model.quotedTable)
   if (query.as)
     sql.push(`"${query.as}"`)
 
   if (query.join)
     query.join.forEach(args =>
-      join(sql, model, query.as || model.table, args)
+      join(sql, model, as, args)
     )
 
-  const whereSql = where(table, query.and, query.or)
+  const whereSql = where(quotedAs, query.and, query.or)
   if (whereSql)
     sql.push('WHERE', whereSql)
 
   if (query.group || query.groupRaw)
-    sql.push('GROUP BY', group(table, query.group, query.groupRaw))
+    sql.push('GROUP BY', group(quotedAs, query.group, query.groupRaw))
 
   if (query.having)
     sql.push('HAVING', having(query.having))
@@ -63,20 +70,20 @@ export const toSql = ({model, __query: query}: {model: Model<any>, __query: Quer
     sql.push('WINDOW', window(query.window))
 
   if (query.union)
-    sql.push(union('UNION', query.union))
+    sql.push(await union('UNION', query.union))
   if (query.unionAll)
-    sql.push(union('UNION ALL', query.unionAll))
+    sql.push(await union('UNION ALL', query.unionAll))
   if (query.intersect)
-    sql.push(union('INTERSECT', query.intersect))
+    sql.push(await union('INTERSECT', query.intersect))
   if (query.intersectAll)
-    sql.push(union('INTERSECT ALL', query.intersectAll))
+    sql.push(await union('INTERSECT ALL', query.intersectAll))
   if (query.except)
-    sql.push(union('EXCEPT', query.except))
+    sql.push(await union('EXCEPT', query.except))
   if (query.exceptAll)
-    sql.push(union('EXCEPT ALL', query.exceptAll))
+    sql.push(await union('EXCEPT ALL', query.exceptAll))
 
   if (query.order || query.orderRaw)
-    sql.push('ORDER BY', order(table, query.order, query.orderRaw))
+    sql.push('ORDER BY', order(quotedAs, query.order, query.orderRaw))
 
   if (query.take)
     query.limit = 1

@@ -1,1 +1,1 @@
-export declare const union: (type: string, args: any[]) => string;
+export declare const union: (type: string, args: any[]) => Promise<string>;

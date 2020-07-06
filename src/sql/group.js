@@ -1,14 +1,14 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+exports.__esModule = true;
 exports.group = void 0;
-exports.group = (table, args, argsRaw) => {
-    const list = [];
+exports.group = function (table, args, argsRaw) {
+    var list = [];
     if (args)
-        args.forEach(arg => {
-            list.push(`${table}."${arg}"`);
+        args.forEach(function (arg) {
+            list.push(table + ".\"" + arg + "\"");
         });
     if (argsRaw)
-        argsRaw.forEach(arg => {
+        argsRaw.forEach(function (arg) {
             list.push(arg);
         });
     return list.join(', ');

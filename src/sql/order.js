@@ -1,27 +1,27 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+exports.__esModule = true;
 exports.order = void 0;
-exports.order = (table, args, argsRaw) => {
-    const list = [];
+exports.order = function (table, args, argsRaw) {
+    var list = [];
     if (args)
-        args.forEach(arg => {
+        args.forEach(function (arg) {
             if (typeof arg === 'string')
-                list.push(`${table}."${arg}"`);
+                list.push(table + ".\"" + arg + "\"");
             else
-                for (let key in arg) {
-                    const value = arg[key];
+                for (var key in arg) {
+                    var value = arg[key];
                     if (typeof value === 'object') {
-                        for (let name in value) {
-                            list.push(`"${key}"."${name}" ${value[name]}`);
+                        for (var name_1 in value) {
+                            list.push("\"" + key + "\".\"" + name_1 + "\" " + value[name_1]);
                         }
                     }
                     else {
-                        list.push(`${table}."${key}" ${arg[key]}`);
+                        list.push(table + ".\"" + key + "\" " + arg[key]);
                     }
                 }
         });
     if (argsRaw)
-        argsRaw.forEach(arg => {
+        argsRaw.forEach(function (arg) {
             list.push(arg);
         });
     return list.join(', ');

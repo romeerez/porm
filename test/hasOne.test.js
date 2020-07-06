@@ -20,36 +20,36 @@ exports.User = model('users', class {
     profileWithScope: hasOne((params) => Profile.active())
 }));
 describe('hasOne', () => {
-    it('makes proper query', () => {
+    it('makes proper query', async () => {
         const user = { id: 5 };
-        expect(exports.User.profile(user).toSql()).toBe(utils_1.line(`
+        expect(await exports.User.profile(user).toSql()).toBe(utils_1.line(`
       SELECT "profiles".* FROM "profiles"
       WHERE "profiles"."userId" = ${user.id}
       LIMIT 1
     `));
-        expect(exports.User.profileWithScope(user).toSql()).toBe(utils_1.line(`
+        expect(await exports.User.profileWithScope(user).toSql()).toBe(utils_1.line(`
       SELECT "profiles".* FROM "profiles"
       WHERE "profiles"."active" = true
         AND "profiles"."userId" = ${user.id}
       LIMIT 1
     `));
     });
-    it('can be joined', () => {
+    it('can be joined', async () => {
         const q = exports.User.all();
-        expect(q.join('profile').toSql()).toBe(utils_1.line(`
+        expect(await q.join('profile').toSql()).toBe(utils_1.line(`
       SELECT "users".* FROM "users"
       JOIN "profiles"
         ON "profiles"."userId" = "users"."id"
     `));
-        expect(q.join('profileWithScope').toSql()).toBe(utils_1.line(`
+        expect(await q.join('profileWithScope').toSql()).toBe(utils_1.line(`
       SELECT "users".* FROM "users"
       JOIN "profiles"
         ON "profiles"."active" = true
        AND "profiles"."userId" = "users"."id"
     `));
     });
-    it('has json subquery', () => {
-        expect(exports.User.profile.json().toSql()).toBe(utils_1.line(`
+    it('has json subquery', async () => {
+        expect(await exports.User.profile.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(row_to_json("t".*), '{}') AS json
       FROM (
         SELECT "profiles".* FROM "profiles"
@@ -57,7 +57,7 @@ describe('hasOne', () => {
         LIMIT 1
       ) "t"
     `));
-        expect(exports.User.profileWithScope.json().toSql()).toBe(utils_1.line(`
+        expect(await exports.User.profileWithScope.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(row_to_json("t".*), '{}') AS json
       FROM (
         SELECT "profiles".* FROM "profiles"

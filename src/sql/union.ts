@@ -1,10 +1,12 @@
-export const union = (type: string, args: any[]) => {
+export const union = async (type: string, args: any[]) => {
   const list: string[] = []
-  args.forEach(arg => {
-    if (typeof arg === 'string')
-      list.push(arg)
-    else
-      list.push(arg.toSql())
-  })
+  await Promise.all(
+    args.map(async arg => {
+      if (typeof arg === 'string')
+        list.push(arg)
+      else
+        list.push(await arg.toSql())
+    })
+  )
   return `${type} ${list.join(` ${type} `)}`
 }

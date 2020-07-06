@@ -19,15 +19,15 @@ const User = model('users', class {
     chatsWithScope: hasAndBelongsToMany((params) => Chat.active())
 }));
 describe('hasAndBelongsToMany', () => {
-    it('makes proper query', () => {
+    it('makes proper query', async () => {
         const user = { id: 5 };
-        expect(User.chats(user).toSql()).toBe(utils_1.line(`
+        expect(await User.chats(user).toSql()).toBe(utils_1.line(`
       SELECT "chats".* FROM "chats"
       JOIN "chatsUsers"
         ON "chatsUsers"."userId" = 5
       WHERE "chats"."id" = "chatsUsers"."chatId"
     `));
-        expect(User.chatsWithScope(user).toSql()).toBe(utils_1.line(`
+        expect(await User.chatsWithScope(user).toSql()).toBe(utils_1.line(`
       SELECT "chats".* FROM "chats"
       JOIN "chatsUsers"
         ON "chatsUsers"."userId" = 5
@@ -35,15 +35,15 @@ describe('hasAndBelongsToMany', () => {
         AND "chats"."active" = true
     `));
     });
-    it('can be joined', () => {
+    it('can be joined', async () => {
         const q = User.all();
-        expect(q.join('chats').toSql()).toBe(utils_1.line(`
+        expect(await q.join('chats').toSql()).toBe(utils_1.line(`
       SELECT "users".* FROM "users"
         JOIN "chatsUsers"
           ON "chatsUsers"."userId" = "users"."id"
         JOIN "chats" ON "chats"."id" = "chatsUsers"."chatId"
     `));
-        expect(q.join('chatsWithScope').toSql()).toBe(utils_1.line(`
+        expect(await q.join('chatsWithScope').toSql()).toBe(utils_1.line(`
       SELECT "users".* FROM "users"
         JOIN "chatsUsers"
           ON "chatsUsers"."userId" = "users"."id"
@@ -52,8 +52,8 @@ describe('hasAndBelongsToMany', () => {
          AND "chats"."active" = true
     `));
     });
-    it('has json subquery', () => {
-        expect(User.chats.json().toSql()).toBe(utils_1.line(`
+    it('has json subquery', async () => {
+        expect(await User.chats.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
       FROM (
         SELECT "chats".* FROM "chats"
@@ -62,7 +62,7 @@ describe('hasAndBelongsToMany', () => {
         WHERE "chats"."id" = "chatsUsers"."chatId"
       ) "t"
     `));
-        expect(User.chatsWithScope.json().toSql()).toBe(utils_1.line(`
+        expect(await User.chatsWithScope.json().toSql()).toBe(utils_1.line(`
       SELECT COALESCE(json_agg(row_to_json("t".*)), '[]') AS json
       FROM (
         SELECT "chats".* FROM "chats"
