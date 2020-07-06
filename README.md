@@ -24,11 +24,12 @@ Imagine that we are building another messenger, with users and chat rooms.
 
 User record has one profile, chat record has many messages, message belongs to user, users have many chats.
 
-Now let's get single json of all records together! Let's leave model definitions for later.
+Typical messenger shows list of chats/contacts with one last message in each.
+That last message should contain text, message author's name, photo.
 
 ```ts
 const result = await Chat.include({
-  messages: Message.include({
+  messages: Message.as('lastMessage').include({
     user: User.include('profile')
   }).last()
 }).json()
@@ -40,7 +41,7 @@ It produces single SQL query and returns JSON like this:
 [{
   "id": 1,
   "title": "chat title",
-  "messages": [{
+  "lastMessage": {
     "id": 1,
     "text": "message text",
     "userId": 1,
@@ -53,7 +54,7 @@ It produces single SQL query and returns JSON like this:
         "photo": "url to photo"
       }
     }
-  }]
+  }
 }]
 ```
 
