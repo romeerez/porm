@@ -1,6 +1,6 @@
 {
   "name": "porm",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Postgres ORM",
   "repository": "https://gitlab.com/romikus/porm",
   "author": "Roman Kushyn",
@@ -21,7 +21,8 @@
   "license": "MIT",
   "scripts": {
     "start": "tsc --watch",
-    "build": "tsc"
+    "build": "tsc",
+    "prepublish": "tsc"
   },
   "dependencies": {
     "@types/pluralize": "latest",
