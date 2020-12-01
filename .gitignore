@@ -1,10 +1,10 @@
 .idea
-bench
 node_modules
 yarn.lock
 yarn-error.log
 test.*
 todo.txt
-typeorm
-objection
+experiments
 PREV_README.md
+dist
+docs
