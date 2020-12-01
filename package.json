@@ -2,7 +2,7 @@
   "name": "porm",
   "version": "1.1.7",
   "description": "Postgres ORM",
-  "repository": "https://gitlab.com/romikus/porm",
+  "repository": "https://github.com/romeerez/porm",
   "author": "Roman Kushyn",
   "keywords": [
     "pg",
