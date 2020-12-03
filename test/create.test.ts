@@ -3,16 +3,16 @@ import db from './db'
 import {line} from './utils'
 
 const model = porm(db)
-const User = model('users', class {id: number; name: string; role: string});
+const User = model<{id: number; name: string; role: string}>('users');
 (User as any).columnsPromise = {}
 
-const WithCreatedAt = model('users', class {id: number; name: string; role: string; createdAt: Date});
+const WithCreatedAt = model<{id: number; name: string; role: string; createdAt: Date}>('users');
 (WithCreatedAt as any).columns = () => ({createdAt: {}})
 
-const WithUpdatedAt = model('users', class {id: number; name: string; role: string; updatedAt: Date});
+const WithUpdatedAt = model<{id: number; name: string; role: string; updatedAt: Date}>('users');
 (WithUpdatedAt as any).columns = () => ({updatedAt: {}})
 
-const WithBoth = model('users', class {id: number; name: string; role: string; createdAt: Date; updatedAt: Date});
+const WithBoth = model<{id: number; name: string; role: string; createdAt: Date; updatedAt: Date}>('users');
 (WithBoth as any).columns = () => ({createdAt: {}, updatedAt: {}})
 
 describe('create', () => {

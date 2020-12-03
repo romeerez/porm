@@ -4,13 +4,13 @@ import {line} from './utils'
 
 const model = porm(db)
 
-const Profile = model('profiles', class {id: number; userId: number}).scopes({
+const Profile = model<{id: number; userId: number}>('profiles').scopes({
   active() {
     return this.where({active: true})
   }
 })
 
-export const User = model('users', class {id: number}).relations(({hasOne}) => ({
+export const User = model<{ id: number }>('users').relations(({hasOne}) => ({
   profile: hasOne((params: {id: number}) => Profile),
   profileWithScope: hasOne((params: {id: number}) => Profile.active())
 }))

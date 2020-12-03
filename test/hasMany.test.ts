@@ -4,13 +4,13 @@ import {line} from './utils'
 
 const model = porm(db)
 
-const Message = model('messages', class {id: number; chatId: number}).scopes({
+const Message = model<{id: number; chatId: number}>('messages').scopes({
   active() {
     return this.where({active: true})
   }
 })
 
-const Chat = model('chats', class {id: number}).relations(({hasMany}) => ({
+const Chat = model<{id: number}>('chats').relations(({hasMany}) => ({
   messages: hasMany((params: {id: number}) => Message),
   messagesWithScope: hasMany((params: {id: number}) => Message.active())
 }))

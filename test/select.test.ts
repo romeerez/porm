@@ -4,9 +4,9 @@ import db from './db'
 
 const model = porm(db)
 
-const User = model('users', class {})
-const Chat = model('chats', class {})
-const Message = model('messages', class {})
+const User = model('users')
+const Chat = model('chats')
+const Message = model('messages')
 
 describe('toQuery', () => {
   it('creates a query with same props as model', () => {

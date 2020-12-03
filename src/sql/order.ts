@@ -1,14 +1,13 @@
 export const order = (table: string, args?: any[], argsRaw?: any[]) => {
   const list: string[] = []
   if (args)
-    args.forEach(arg => {
-      if (typeof arg === 'string')
-        list.push(`${table}."${arg}"`)
+    args.forEach((arg) => {
+      if (typeof arg === 'string') list.push(`${table}."${arg}"`)
       else
-        for (let key in arg) {
+        for (const key in arg) {
           const value = arg[key]
           if (typeof value === 'object') {
-            for (let name in value) {
+            for (const name in value) {
               list.push(`"${key}"."${name}" ${value[name]}`)
             }
           } else {
@@ -17,7 +16,7 @@ export const order = (table: string, args?: any[], argsRaw?: any[]) => {
         }
     })
   if (argsRaw)
-    argsRaw.forEach(arg => {
+    argsRaw.forEach((arg) => {
       list.push(arg)
     })
   return list.join(', ')

@@ -1,5 +1,5 @@
 export type ColumnDefinition = {
-  [key: string]: any,
+  [key: string]: any
 
   table_catalog: string
   table_schema: string

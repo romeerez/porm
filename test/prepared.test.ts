@@ -4,10 +4,10 @@ import {line} from './utils'
 
 const model = porm(db)
 
-const User = model('users', class {}).prepare((prepare, users) => ({
+const User = model('users').prepare((prepare, users) => ({
   searchByName: () => {
     const prepared = prepare(['text'], users.where('name = $1'))
-    return (name: string) => prepared.query(name)
+    return (name: string) => prepared.then(({query}) => query(name))
   }
 }))
 

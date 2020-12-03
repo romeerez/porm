@@ -4,7 +4,7 @@ import db from './db'
 
 const model = porm(db)
 
-const User = model('users', class {id: number; name: string})
+const User = model<{id: number; name: string}>('users')
 User.columns = async () => ({})
 
 describe('transaction', () => {
@@ -14,7 +14,6 @@ describe('transaction', () => {
     await porm.transaction({User}, async ({User}) => {
       await User.create({name: 'Vasya'})
     })
-
 
     expect(db.transaction).toBeCalled()
     expect(db.exec).toBeCalledWith('BEGIN')

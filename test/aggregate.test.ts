@@ -3,7 +3,7 @@ import db from './db'
 
 const model = porm(db)
 
-const User = model('users', class {id: number; name: string})
+const User = model<{id: number; name: string}>('users')
 
 describe('aggregateSql', () => {
   it('return sql for aggregate function', () => {

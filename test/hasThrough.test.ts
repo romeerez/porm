@@ -5,27 +5,26 @@ import {line} from './utils'
 const model = porm(db)
 
 describe('hasThrough', () => {
-  // [true, false].forEach(one => {
-  [true].forEach(one => {
-    const Country = model('countries', class {id: number}).scopes({
+  [true, false].forEach(one => {
+    const Country = model<{id: number}>('countries').scopes({
       active() {
         return this.where({active: true})
       }
     })
 
-    const User = model('users', class {id: number}).relations(({belongsTo}) => ({
+    const User = model<{id: number}>('users').relations(({belongsTo}) => ({
       country: belongsTo((params: {countryId: number}) => Country)
     }))
 
     describe(`${one ? 'hasOne' : 'hasMany'} through belongsTo`, () => {
-      const Profile = model('profiles', class {id: number; userId: number}).relations(({belongsTo, hasOne, hasMany}) => ({
+      const Profile = model<{id: number; userId: number}>('profiles').relations(({belongsTo, hasOne, hasMany}) => ({
         user: belongsTo((params: {userId: number}) => User),
         country: (one ? hasOne as any : hasMany as any)((params: {userId: number}) => Country.active(), {through: 'user'})
       }))
 
-      it('makes proper query', () => {
+      it('makes proper query', async () => {
         const profile = {userId: 5}
-        expect(Profile.country(profile).toSql()).toBe(line(`
+        expect(await Profile.country(profile).toSql()).toBe(line(`
           SELECT "countries".* FROM "countries"
           JOIN "users" ON "users"."id" = 5
           WHERE "countries"."id" = "users"."countryId" AND "countries"."active" = true
@@ -33,16 +32,16 @@ describe('hasThrough', () => {
         `))
       })
 
-      it('can be joined', () => {
-        expect(Profile.join('country').toSql()).toBe(line(`
+      it('can be joined', async () => {
+        expect(await Profile.join('country').toSql()).toBe(line(`
           SELECT "profiles".* FROM "profiles"
           JOIN "users" ON "users"."id" = "profiles"."userId"
           JOIN "countries" ON "countries"."id" = "users"."countryId" AND "countries"."active" = true
         `))
       })
 
-      it('has json subquery', () => {
-        expect(Profile.country.json().toSql()).toBe(line(`
+      it('has json subquery', async () => {
+        expect(await Profile.country.json().toSql()).toBe(line(`
           SELECT COALESCE(
             ${one ? '' : 'json_agg('}row_to_json("t".*)${one ? ',' : '),'}
             ${one ? "'{}'" : "'[]'"}
@@ -58,14 +57,14 @@ describe('hasThrough', () => {
     })
 
     describe(`${one ? 'hasOne' : 'hasMany'} through hasOne`, () => {
-      const Profile = model('profiles', class {id: number; userId: number}).relations(({belongsTo, hasOne, hasMany}) => ({
+      const Profile = model<{id: number; userId: number}>('profiles').relations(({belongsTo, hasOne, hasMany}) => ({
         user: hasOne((params: {userId: number}) => User),
         country: (one ? hasOne as any : hasMany as any)((params: {userId: number}) => Country.active(), {through: 'user'})
       }))
 
-      it('makes proper query', () => {
+      it('makes proper query', async () => {
         const profile = {id: 5}
-        expect(Profile.country(profile).toSql()).toBe(line(`
+        expect(await Profile.country(profile).toSql()).toBe(line(`
           SELECT "countries".* FROM "countries"
           JOIN "users" ON "users"."profileId" = 5
           WHERE "countries"."id" = "users"."countryId" AND "countries"."active" = true
@@ -73,16 +72,16 @@ describe('hasThrough', () => {
         `))
       })
 
-      it('can be joined', () => {
-        expect(Profile.join('country').toSql()).toBe(line(`
+      it('can be joined', async () => {
+        expect(await Profile.join('country').toSql()).toBe(line(`
           SELECT "profiles".* FROM "profiles"
           JOIN "users" ON "users"."profileId" = "profiles"."id"
           JOIN "countries" ON "countries"."id" = "users"."countryId" AND "countries"."active" = true
         `))
       })
 
-      it('has json subquery', () => {
-        expect(Profile.country.json().toSql()).toBe(line(`
+      it('has json subquery', async () => {
+        expect(await Profile.country.json().toSql()).toBe(line(`
           SELECT COALESCE(
             ${one ? '' : 'json_agg('}row_to_json("t".*)${one ? ',' : '),'}
             ${one ? "'{}'" : "'[]'"}
@@ -98,14 +97,14 @@ describe('hasThrough', () => {
     })
 
     describe(`${one ? 'hasOne' : 'hasMany'} through hasMany`, () => {
-      const Team = model('teams', class {id: number; userId: number}).relations(({hasOne, hasMany}) => ({
+      const Team = model<{id: number; userId: number}>('teams').relations(({hasOne, hasMany}) => ({
         users: hasMany((params: {userId: number}) => User),
         country: (one ? hasOne as any : hasMany as any)((params: {userId: number}) => Country.active(), {through: 'users'})
       }))
 
-      it('makes proper query', () => {
+      it('makes proper query', async () => {
         const team = {id: 5}
-        expect(Team.country(team).toSql()).toBe(line(`
+        expect(await Team.country(team).toSql()).toBe(line(`
           SELECT "countries".* FROM "countries"
           JOIN "users" ON "users"."teamId" = 5
           WHERE "countries"."id" = "users"."countryId" AND "countries"."active" = true
@@ -113,8 +112,8 @@ describe('hasThrough', () => {
         `))
       })
 
-      it('can be joined', () => {
-        expect(Team.join('country').toSql()).toBe(line(`
+      it('can be joined', async () => {
+        expect(await Team.join('country').toSql()).toBe(line(`
           SELECT "teams".* FROM "teams"
           JOIN "users" ON "users"."teamId" = "teams"."id"
           JOIN "countries"
@@ -122,8 +121,8 @@ describe('hasThrough', () => {
         `))
       })
 
-      it('has json subquery', () => {
-        expect(Team.country.json().toSql()).toBe(line(`
+      it('has json subquery', async () => {
+        expect(await Team.country.json().toSql()).toBe(line(`
           SELECT COALESCE(
             ${one ? '' : 'json_agg('}row_to_json("t".*)${one ? ',' : '),'}
             ${one ? "'{}'" : "'[]'"}
@@ -140,14 +139,14 @@ describe('hasThrough', () => {
 
 
     describe(`${one ? 'hasOne' : 'hasMany'} through hasHasAndBelongsToMany`, () => {
-      const Chat = model('chats', class {id: number}).relations(({hasAndBelongsToMany, hasOne, hasMany}) => ({
+      const Chat = model<{id: number}>('chats').relations(({hasAndBelongsToMany, hasOne, hasMany}) => ({
         users: hasAndBelongsToMany((params: {id: number}) => User),
         country: (one ? hasOne as any : hasMany as any)((params: {userId: number}) => Country.active(), {through: 'users'})
       }))
 
-      it('makes proper query', () => {
+      it('makes proper query', async () => {
         const chat = {id: 5}
-        expect(Chat.country(chat).toSql()).toBe(line(`
+        expect(await Chat.country(chat).toSql()).toBe(line(`
           SELECT "countries".* FROM "countries"
           JOIN "chatsUsers" ON "chatsUsers"."chatId" = 5
           JOIN "users" ON "users"."id" = "chatsUsers"."userId"
@@ -156,8 +155,8 @@ describe('hasThrough', () => {
         `))
       })
 
-      it('can be joined', () => {
-        expect(Chat.join('country').toSql()).toBe(line(`
+      it('can be joined', async () => {
+        expect(await Chat.join('country').toSql()).toBe(line(`
           SELECT "chats".* FROM "chats"
           JOIN "chatsUsers" ON "chatsUsers"."chatId" = "chats"."id"
           JOIN "users" ON "users"."id" = "chatsUsers"."userId"
@@ -165,8 +164,8 @@ describe('hasThrough', () => {
         `))
       })
 
-      it('has json subquery', () => {
-        expect(Chat.country.json().toSql()).toBe(line(`
+      it('has json subquery', async () => {
+        expect(await Chat.country.json().toSql()).toBe(line(`
           SELECT COALESCE(
             ${one ? '' : 'json_agg('}row_to_json("t".*)${one ? ',' : '),'}
             ${one ? "'{}'" : "'[]'"}

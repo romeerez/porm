@@ -1,5 +1,9 @@
 export interface Query
-  extends QueryDataArrayAny, QueryDataString, QueryDataStringOrPromise, QueryDataNumber, QueryDataBoolean {}
+  extends QueryDataArrayAny,
+    QueryDataString,
+    QueryDataStringOrPromise,
+    QueryDataNumber,
+    QueryDataBoolean {}
 
 export interface QueryDataArrayAny {
   and?: any[]
@@ -46,66 +50,87 @@ export interface QueryDataBoolean {
 export const createQuery = <T extends object>(model: T, prev?: any) => {
   const object = Object.create(model)
   const query: any = {}
-  Object.assign(object, {model, __query: query})
+  Object.assign(object, { model, __query: query })
   if (prev)
-    for (let key in prev)
-      if (Array.isArray(prev[key]))
-        query[key] = [...prev[key]]
-      else
-        query[key] = prev[key]
-  return object as T & {model: T, __query: Query}
+    for (const key in prev)
+      if (Array.isArray(prev[key])) query[key] = [...prev[key]]
+      else query[key] = prev[key]
+  return object as T & { model: T; __query: Query }
 }
 
-export const merge = <T extends {__query?: Query}>(model: T, args: {__query: any}[]) => {
+export const merge = <T extends { __query?: Query }>(
+  model: T,
+  args: { __query: any }[],
+) => {
   const object = model.__query ? model : createQuery(model)
   const target = object.__query as any
-  args.forEach(({__query: query}) => {
+  args.forEach(({ __query: query }) => {
     if (!query) return
 
-    for (let key in query)
+    for (const key in query)
       if (Array.isArray(query[key]))
-        target[key] ? target[key].push(...query[key]) : target[key] = query[key]
-      else
-        target[key] = query[key]
+        target[key]
+          ? target[key].push(...query[key])
+          : (target[key] = query[key])
+      else target[key] = query[key]
   })
-  return object as T & {model: T, __query: Query}
+  return object as T & { model: T; __query: Query }
 }
 
 export const toQuery = <T extends object>(model: T) => {
-  return (
-    (model as any).__query ? model : createQuery(model)
-  ) as T & {model: T, __query: Query}
+  return ((model as any).__query ? model : createQuery(model)) as T & {
+    model: T
+    __query: Query
+  }
 }
 
-export const setNumber = <T extends {__query: Query}>(model: {toQuery: () => T}, key: keyof QueryDataNumber, value: number) => {
-  const query = model.toQuery()
-  query.__query[key] = value
-  return query
-}
-
-export const setString = <T extends {__query: Query}>(model: {toQuery: () => T}, key: keyof QueryDataString, value: string) => {
-  const query = model.toQuery()
-  query.__query[key] = value
-  return query
-}
-
-export const setStringOrPromise = <T extends {__query: Query}>(
-  model: {toQuery: () => T}, key: keyof QueryDataStringOrPromise, value: string | Promise<string>
+export const setNumber = <T extends { __query: Query }>(
+  model: { toQuery: () => T },
+  key: keyof QueryDataNumber,
+  value: number,
 ) => {
   const query = model.toQuery()
   query.__query[key] = value
   return query
 }
 
-export const setBoolean = <T extends {__query: Query}>(model: {toQuery: () => T}, key: keyof QueryDataBoolean, value: boolean) => {
+export const setString = <T extends { __query: Query }>(
+  model: { toQuery: () => T },
+  key: keyof QueryDataString,
+  value: string,
+) => {
   const query = model.toQuery()
   query.__query[key] = value
   return query
 }
 
-export const pushArrayAny = <T extends {__query: Query}>(model: {toQuery: () => T}, key: keyof QueryDataArrayAny, args: any[]) => {
+export const setStringOrPromise = <T extends { __query: Query }>(
+  model: { toQuery: () => T },
+  key: keyof QueryDataStringOrPromise,
+  value: string | Promise<string>,
+) => {
+  const query = model.toQuery()
+  query.__query[key] = value
+  return query
+}
+
+export const setBoolean = <T extends { __query: Query }>(
+  model: { toQuery: () => T },
+  key: keyof QueryDataBoolean,
+  value: boolean,
+) => {
+  const query = model.toQuery()
+  query.__query[key] = value
+  return query
+}
+
+export const pushArrayAny = <T extends { __query: Query }>(
+  model: { toQuery: () => T },
+  key: keyof QueryDataArrayAny,
+  args: any[],
+) => {
   const query = model.toQuery()
   const value = query.__query[key]
-  value ? value.push(...args) : query.__query[key] = args
+  value ? value.push(...args) : (query.__query[key] = args)
   return query
 }

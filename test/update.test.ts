@@ -4,10 +4,10 @@ import {line} from './utils'
 
 const model = porm(db)
 
-const User = model('users', class {});
+const User = model('users');
 (User as any).columns = () => ({})
 
-const WithUpdatedAt = model('users', class {updatedAt: Date});
+const WithUpdatedAt = model<{updatedAt: Date}>('users');
 (WithUpdatedAt as any).columns = () => ({updatedAt: {}})
 
 describe('updateAll', () => {

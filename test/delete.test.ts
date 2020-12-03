@@ -3,7 +3,7 @@ import db from './db'
 import {line} from './utils'
 
 const model = porm(db)
-const User = model('users', class {})
+const User = model('users')
 
 describe('deleteAll', () => {
   it('deletes using query', () => {

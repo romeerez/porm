@@ -4,9 +4,9 @@ import {line} from './utils'
 
 const model = porm(db)
 
-const ProfileModel = model('profiles', class {id: number; userId: number})
+const ProfileModel = model<{id: number; userId: number}>('profiles')
 
-const UserModel = model('users', class {id: number})
+const UserModel = model<{id: number}>('users')
 
 const Profile = ProfileModel.relations(({belongsTo}) => ({
   user: belongsTo((params: {userId: number}) => UserModel)
